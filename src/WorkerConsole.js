@@ -38,7 +38,7 @@ if (this.console && this.console.log) {
     this.Worker = function Worker(url) {
         // Create a real Worker object that first loads this file to define
         // console.log() and then loads the requested URL
-        var w = new _Worker("WorkerConsole.js#" + url);
+        var w = new _Worker("src/WorkerConsole.js#" + url);
 
         // Create a side channel for the worker to send log messages on
         var channel = new MessageChannel();

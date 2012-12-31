@@ -278,6 +278,21 @@
 
 		newScheduledWorkerPool: function() {
 
+		},
+
+		newWorker: function() {
+			// Make a worker whose postMessage methods return promises?
+			// it is the user's worker...
+			// so we'll need to modify onMessage somehow so it returns
+			// something that can set the state of the promise.
+
+			// Maybe instead of overriding postMessage provide a new method:
+			// promiseMessage since promises are going to have to be cached
+			// and looked up by some id.  So if the other side never fulfills
+			// the promise it'll leak.
+
+			// Allow promiseMessage(msg, timeout)?
+			// to expire the promises?
 		}
 	};
 
@@ -443,4 +458,10 @@
 
 
 	window.Workers = workerFactory;
+
+	if (typeof define !== 'undefined') {
+		define(function() {
+			return workerFactory;
+		});
+	}
 })();
