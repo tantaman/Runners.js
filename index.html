@@ -9,8 +9,24 @@
 
 		// TODO: return promises
 		// TODO: allow callback when promise completes
+		function busy() {
+			var a = 0;
+			while(true) {
+				a+=1;
+			}
+		}
+
+		// pool.execute(busy);
+		// pool.execute(busy);
+
 		pool.execute(function() {
-			console.log('Hey boss!');
+			console.log('Hello');
+		});
+		pool.execute(function() {
+			console.log('hoodby');
+		});
+		pool.execute(function() {
+			console.log('hoodbye');
 		});
 	</script
 </body>

@@ -28,16 +28,19 @@
 
 		popBack: function() {
 			--this._size;
+			var node = this._tail;
 			this._tail = this._tail.prev;
-			this._tail.next = null;
-			return this._tail;
+			if (this._tail != null)
+				this._tail.next = null;
+			return node;
 		},
 
 		popFront: function() {
 			--this._size;
+			var node = this._head;
 			this._head = this._head.next;
 			this._head.prev = null;
-			return this._head;
+			return node;
 		},
 
 		pushFront: function(value) {
@@ -106,7 +109,9 @@
 			if (this._maxSize < 0) return false;
 
 			return this._list.size() >= this._maxSize;
-		}
+		},
+
+		size: function() { return this._list.size(); }
 	};
 
 	var workerFactory = {
@@ -165,8 +170,14 @@
 			this.worker.postMessage(m);
 		},
 
+		onMessage: function(handler) {
+			// TODO: addEventListener
+			this.worker.onmessage = handler;
+		},
+
 		_reset: function() {
 			// create a new promise
+			// http://wiki.commonjs.org/wiki/Promises/A
 		},
 
 		_workCompleted: function() {
@@ -222,9 +233,10 @@
 		_createWorker: function() {
 			var worker = new WorkerWrapper(this._createActualWorker());
 			var self = this;
-			worker.onmessage = function(e) {
+			worker.onMessage(function(e) {
+				console.log('Got msg');
 				self._receiveWorkerMessage(worker, e);
-			}
+			});
 
 			return worker;
 		},
@@ -239,7 +251,7 @@
 					}
 
 					if (this._queue.size() > 0) {
-						this._dispatchToWorker(worker, this._queue.remove());
+						this._dispatchToWorker(worker, this._queue.remove().value);
 					} else {
 						this._runningWorkers.removeWithNode(worker.runningNode);
 						worker.runningNode = null;
