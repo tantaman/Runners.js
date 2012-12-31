@@ -5,7 +5,13 @@
 </head>
 <body>
 	<script>
-		Workers.newFixedWorkerPool();
+		var pool = Workers.newFixedWorkerPool(2);
+
+		// TODO: return promises
+		// TODO: allow callback when promise completes
+		pool.execute(function() {
+			console.log('Hey boss!');
+		});
 	</script
 </body>
 </html>

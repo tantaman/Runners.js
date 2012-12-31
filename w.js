@@ -22,18 +22,22 @@
 				node.prev = this._tail;
 				this._tail = node;
 			}
+
+			return node;
 		},
 
 		popBack: function() {
 			--this._size;
 			this._tail = this._tail.prev;
 			this._tail.next = null;
+			return this._tail;
 		},
 
 		popFront: function() {
 			--this._size;
 			this._head = this._head.next;
 			this._head.prev = null;
+			return this._head;
 		},
 
 		pushFront: function(value) {
@@ -50,14 +54,34 @@
 				node.next = this._head;
 				this._head = node;
 			}
+
+			return node;
+		},
+
+		removeWithNode: function(node) {
+			if (node == null) throw 'Null node';
+
+			--this._size;
+
+			var prevNode = node.prev;
+			var nextNode = node.next;
+			if (prevNode != null) {
+				prevNode.next = node.next;
+			}
+
+			if (nextNode != null) {
+				nextNode.prev = node.prev;
+			}
+
+			node.next = node.prev = null;
 		},
 
 		add: function(value) {
-			this.pushFront(value);
+			return this.pushFront(value);
 		},
 
 		remove: function() {
-			this.popBack();
+			return this.popBack();
 		},
 
 		size: function() { return this._size; }
@@ -75,7 +99,7 @@
 		},
 
 		remove: function() {
-			this._list.popBack();
+			return this._list.popBack();
 		},
 
 		full: function() {
@@ -136,6 +160,20 @@
 		this.worker = worker;
 	}
 
+	WorkerWrapper.prototype = {
+		postMessage: function(m) {
+			this.worker.postMessage(m);
+		},
+
+		_reset: function() {
+			// create a new promise
+		},
+
+		_workCompleted: function() {
+			// complete the promise
+		}
+	};
+
 	function AbstractWorkerPool(taskQueue, minWorkers, maxWorkers) {
 		this._queue = taskQueue;
 		this._minWorkers = minWorkers;
@@ -156,7 +194,7 @@
 			var normalizedArgs = normalizeArgs(args, context, func, id);
 
 			if (this._idleWorkers.size() > 0) {
-				var worker = this._idleWorkers.remove();
+				var worker = this._idleWorkers.remove().value;
 				this._dispatchToWorker(worker, normalizedArgs);
 			} else if (this._runningWorkers.size() < this._maxWorkers) {
 				var worker = this._createWorker();
@@ -172,10 +210,13 @@
 
 		_dispatchToWorker: function(worker, task) {
 			// TODO: check function cache
+			var promise = worker._reset();
 			task.func = task.func.toString();
 
 			worker.runningNode = this._runningWorkers.add(worker);
 			worker.postMessage(task);
+
+			return promise;
 		},
 
 		_createWorker: function() {
@@ -184,11 +225,19 @@
 			worker.onmessage = function(e) {
 				self._receiveWorkerMessage(worker, e);
 			}
+
+			return worker;
 		},
 
 		_receiveWorkerMessage: function(worker, e) {
 			switch (e.data.type) {
 				case 'completed':
+					try {
+						worker._workCompleted();
+					} catch (e) {
+						console.log(e);
+					}
+
 					if (this._queue.size() > 0) {
 						this._dispatchToWorker(worker, this._queue.remove());
 					} else {
