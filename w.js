@@ -1,6 +1,147 @@
 (function() {
 	'use strict';
 
+	function identity(a) { return a; }
+
+	function combineArgs(array, args) {
+		for (var i = 0; i < args.length; ++i) {
+			var arg = args[i];
+			if (Array.isArray(arg)) {
+				array = array.concat(arg);
+			} else {
+				array.push(arg);
+			}
+		}
+
+		return array;
+	}
+
+	function combine(array, maybeArray) {
+		if (Array.isArray(maybeArray)) {
+			array = this._doneCbs.concat(maybeArray);
+		} else if (maybeArray != null) {
+			array.push(maybeArray);
+		}
+
+		return array;
+	}
+
+	function createPublicInterface(object) {
+		var iface = {};
+		for (var key in object) {
+			var val = object[key];
+			if (typeof val === 'function' && key[0] !== '_') {
+				iface[key] = val.bind(object);
+			}
+		}
+
+		return iface;
+	}
+
+	function Promise() {
+		this._thenCbs = [];
+		this._doneCbs = [];
+		this._failCbs = [];
+
+		this._doneFilter = identity;
+		this._failFilter = identity;
+
+		this._state = 'pending';
+	}
+
+	Promise.prototype = {
+		then: function(doneBacks, failBacks, progressBacks) {
+			this._doneCbs = combine(this._doneCbs, doneBacks);
+			this._failCbs = combine(this._failCbs, failBacks);
+		},
+
+		done: function() {
+			if (this._state === 'resolved') {
+				this._callLateArrivals(arguments);
+			} else if (this._state === 'pending') {
+				this._doneCbs = combineArgs(this._doneCbs, arguments);
+			}
+		},
+
+		fail: function() {
+			if (this._state === 'rejected') {
+				this._callLateArrivals(arguments);
+			} else if (this._state === 'pending') {
+				this._failCbs = combineArgs(this._failCbs, arguments);
+			}
+		},
+
+		always: function() {
+			this.done.apply(this, arguments);
+			this.fail.apply(this, arguments);
+		},
+
+		pipe: function(doneFilter, failFilter) {
+			this._doneFilter = doneFilter || identity;
+			this._failFilter = failFilter || identity;
+		},
+
+		state: function() {
+			return this._state;
+		},
+
+		_callLateArrivals: function(args) {
+			for (var i = 0; i < args.length; ++i) {
+				var arg = args[i];
+				if (Array.isArray(arg)) {
+					arg.forEach(function(f) {
+						f(this._result);
+					}, this)
+				} else {
+					arg(this._result);
+				}
+			}
+		},
+
+		_setState: function(state, result) {
+			if (this._state !== 'pending')
+				throw 'Illegal state transition';
+
+			this._state = state;
+			switch (state) {
+				case 'rejected':
+					this._result = this._failFilter(result);
+					this._callFailbacks();
+				break;
+				case 'resolved':
+					this._result = this._doneFilter(result);
+					this._callDonebacks();
+				break;
+				default:
+					throw 'Illegal state transition';
+			}
+
+			this._failCbs = [];
+			this._doneCbs = [];
+			this._failFilter = this._doneFilter = identity;
+		},
+
+		_callFailbacks: function() {
+			this._failCbs.forEach(function(fcb) {
+				try {
+					fcb(this._result);
+				} catch (e) {
+					console.log(e);
+				}
+			}, this);
+		},
+
+		_callDonebacks: function() {
+			this._doneCbs.forEach(function(dcb) {
+				try {
+					dcb(this._result);
+				} catch (e) {
+					console.log(e);
+				}
+			}, this);
+		}
+	};
+
 	function LinkedList() {
 		this._head = null;
 		this._tail = null;
@@ -175,15 +316,33 @@
 			this.worker.onmessage = handler;
 		},
 
-		_reset: function() {
-			// create a new promise
-			// http://wiki.commonjs.org/wiki/Promises/A
-		},
+		_workCompleted: function(data) {
+			var state;
+			if (data.type === 'failed') {
+				state = 'rejected';
+			} else {
+				state = 'resolved';
+			}
 
-		_workCompleted: function() {
-			// complete the promise
+			this.currentTask._setState(state, data.result);
 		}
 	};
+
+	function TaskWrapper(task) {
+		this.task = task;
+		this._promise = new Promise();
+		this._publicPromise = createPublicInterface(this._promise);
+	}
+
+	TaskWrapper.prototype = {
+		promise: function() {
+			return this._publicPromise;
+		},
+
+		_setState: function(state, result) {
+			this._promise._setState(state, result);
+		}
+	}
 
 	function AbstractWorkerPool(taskQueue, minWorkers, maxWorkers) {
 		this._queue = taskQueue;
@@ -201,40 +360,40 @@
 	}
 
 	AbstractWorkerPool.prototype = {
-		execute: function(args, context, func, id) {
+		submit: function(args, context, func, id) {
 			var normalizedArgs = normalizeArgs(args, context, func, id);
+			var wrappedTask = new TaskWrapper(normalizedArgs);
 
 			if (this._idleWorkers.size() > 0) {
 				var worker = this._idleWorkers.remove().value;
-				this._dispatchToWorker(worker, normalizedArgs);
+				this._dispatchToWorker(worker, wrappedTask);
 			} else if (this._runningWorkers.size() < this._maxWorkers) {
 				var worker = this._createWorker();
-				this._dispatchToWorker(worker, normalizedArgs);
+				this._dispatchToWorker(worker, wrappedTask);
 			} else {
 				if (this._queue.full()) {
 					throw 'Task queue has reached its limit';
 				}
 
-				this._queue.add(normalizedArgs);
+				this._queue.add(wrappedTask);
 			}
+
+			return wrappedTask.promise();
 		},
 
-		_dispatchToWorker: function(worker, task) {
+		_dispatchToWorker: function(worker, wrappedTask) {
 			// TODO: check function cache
-			var promise = worker._reset();
-			task.func = task.func.toString();
+			wrappedTask.task.func = wrappedTask.task.func.toString();
 
 			worker.runningNode = this._runningWorkers.add(worker);
-			worker.postMessage(task);
-
-			return promise;
+			worker.currentTask = wrappedTask;
+			worker.postMessage(wrappedTask.task);
 		},
 
 		_createWorker: function() {
 			var worker = new WorkerWrapper(this._createActualWorker());
 			var self = this;
 			worker.onMessage(function(e) {
-				console.log('Got msg');
 				self._receiveWorkerMessage(worker, e);
 			});
 
@@ -244,8 +403,9 @@
 		_receiveWorkerMessage: function(worker, e) {
 			switch (e.data.type) {
 				case 'completed':
+				case 'failed':
 					try {
-						worker._workCompleted();
+						worker._workCompleted(e.data);
 					} catch (e) {
 						console.log(e);
 					}

@@ -19,15 +19,24 @@
 		// pool.execute(busy);
 		// pool.execute(busy);
 
-		pool.execute(function() {
+		pool.submit(function() {
 			console.log('Hello');
 		});
-		pool.execute(function() {
+		pool.submit(function() {
 			console.log('hoodby');
 		});
-		pool.execute(function() {
+		var promise = pool.submit(function() {
 			console.log('hoodbye');
+			throw 'shit shit';
 		});
+
+		promise.then(function() {
+			console.log('Nice!');
+		}, function() {
+			console.log('Not nice :/');
+		});
+
+		console.log(promise);
 	</script
 </body>
 </html>
