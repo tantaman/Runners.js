@@ -79,6 +79,15 @@
 		pipe: function(doneFilter, failFilter) {
 			this._doneFilter = doneFilter || identity;
 			this._failFilter = failFilter || identity;
+
+			switch (this._state) {
+				case 'rejected':
+					this._result = this._failFilter(this._result);
+				break;
+				case 'resolved':
+					this._result = this._doneFilter(this._result);
+				break;
+			}
 		},
 
 		state: function() {
@@ -228,6 +237,19 @@
 			return this.popBack();
 		},
 
+		forEach: function(func, ctx) {
+			var crsr = this._head;
+			while (crsr != null) {
+				func.call(ctx, crsr.value);
+				crsr = crsr.next;
+			}
+		},
+
+		clear: function() {
+			this._head = this._tail = null;
+			this._size = 0;
+		},
+
 		size: function() { return this._size; }
 	};
 
@@ -244,6 +266,10 @@
 
 		remove: function() {
 			return this._list.popBack();
+		},
+
+		clear: function() {
+			this._list.clear();
 		},
 
 		full: function() {
@@ -303,10 +329,14 @@
 			context = null;
 			args = null;
 		} else if (!Array.isArray(args) && typeof args === 'object') {
-			context = args;
-			func = context;
 			id = func;
+			func = context;
+			context = args;
 			args = null;
+		} else if (Array.isArray(args) && typeof context === 'function') {
+			id = func;
+			func = context;
+			context = null;
 		}
 
 		return {
@@ -323,12 +353,17 @@
 
 	WorkerWrapper.prototype = {
 		postMessage: function(m) {
+			console.log(m);
 			this.worker.postMessage(m);
 		},
 
 		onMessage: function(handler) {
 			// TODO: addEventListener
 			this.worker.onmessage = handler;
+		},
+
+		terminate: function() {
+			this.worker.terminate();
 		},
 
 		_workCompleted: function(data) {
@@ -396,6 +431,14 @@
 			return wrappedTask.promise();
 		},
 
+		numWorkers: function() {
+			return this._idleWorkers.size() + this._runningWorkers.size();
+		},
+
+		queueSize: function() {
+			return this._queue.size();
+		},
+
 		_dispatchToWorker: function(worker, wrappedTask) {
 			// TODO: check function cache
 			wrappedTask.task.func = wrappedTask.task.func.toString();
@@ -413,6 +456,17 @@
 			});
 
 			return worker;
+		},
+
+		terminate: function() {
+			this._queue.clear();
+			this._runningWorkers.forEach(function(worker) {
+				worker.terminate();
+			}, this);
+
+			this._idleWorkers.forEach(function(worker) {
+				worker.terminate();
+			}, this);
 		},
 
 		_receiveWorkerMessage: function(worker, e) {
