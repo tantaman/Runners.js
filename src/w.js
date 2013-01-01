@@ -39,7 +39,7 @@
 	}
 
 	function Promise() {
-		this._thenCbs = [];
+		this._progressCbs = [];
 		this._doneCbs = [];
 		this._failCbs = [];
 
@@ -53,6 +53,7 @@
 		then: function(doneBacks, failBacks, progressBacks) {
 			this._doneCbs = combine(this._doneCbs, doneBacks);
 			this._failCbs = combine(this._failCbs, failBacks);
+			this._progressCbs = combine(this._progressCbs, progressBacks);
 		},
 
 		done: function() {
@@ -144,6 +145,16 @@
 			this._doneCbs.forEach(function(dcb) {
 				try {
 					dcb(this._result);
+				} catch (e) {
+					console.log(e);
+				}
+			}, this);
+		},
+
+		_progressMade: function(data) {
+			this._progressCbs.forEach(function(pcb) {
+				try {
+					pcb(data);
 				} catch (e) {
 					console.log(e);
 				}
@@ -353,7 +364,6 @@
 
 	WorkerWrapper.prototype = {
 		postMessage: function(m) {
-			console.log(m);
 			this.worker.postMessage(m);
 		},
 
@@ -375,6 +385,10 @@
 			}
 
 			this.currentTask._setState(state, data.result);
+		},
+
+		_progressMade: function(data) {
+			this.currentTask._progressMade(data);
 		}
 	};
 
@@ -391,6 +405,10 @@
 
 		_setState: function(state, result) {
 			this._promise._setState(state, result);
+		},
+
+		_progressMade: function(data) {
+			this._promise._progressMade(data);
 		}
 	}
 
@@ -486,6 +504,9 @@
 						worker.runningNode = null;
 						this._idleWorkers.add(worker);
 					}
+				break;
+				case 'progress':
+					worker._progressMade(e.data.data);
 				break;
 			}
 		}

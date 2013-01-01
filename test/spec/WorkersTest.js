@@ -73,7 +73,8 @@ function(Workers) {
 			});
 
 			it('Provides a shutdown mechanism to terminate workers', function() {
-				// TODO: how can we really verify the working of terminate?
+				var pool = Workers.newFixedWorkerPool(1);
+
 			});
 
 			// Run function with with so that they have access to 

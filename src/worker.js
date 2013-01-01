@@ -1,9 +1,16 @@
+var w = {
+	progress: function(data) {
+		self.postMessage({type: 'progress', data: data});
+	}
+};
+
 self.onmessage = function(e) {
-	var func = (new Function('return ' + e.data.func))();
+	var func = (new Function('w', 'return ' + e.data.func))(w);
 
 	var result;
 	var ex = false;
 	try {
+		// e.data.context.__w__ = w;
 		result = func.apply(e.data.context, e.data.args);
 	} catch (e) {
 		result = e;
