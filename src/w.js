@@ -77,6 +77,12 @@
 			this.fail.apply(this, arguments);
 		},
 
+		progress: function() {
+			if (this._state === 'pending') {
+				this._progressCbs = combineArgs(this._progressCbs, arguments);
+			}
+		},
+
 		pipe: function(doneFilter, failFilter) {
 			this._doneFilter = doneFilter || identity;
 			this._failFilter = failFilter || identity;

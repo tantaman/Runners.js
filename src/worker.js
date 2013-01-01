@@ -1,7 +1,8 @@
 var w = {
 	progress: function(data) {
 		self.postMessage({type: 'progress', data: data});
-	}
+	},
+	interrupted: false
 };
 
 self.onmessage = function(e) {

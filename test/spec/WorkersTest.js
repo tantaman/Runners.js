@@ -72,9 +72,35 @@ function(Workers) {
 				});
 			});
 
-			it('Provides a shutdown mechanism to terminate workers', function() {
+			it('Provides a shutdown mechanism to terminate workers', function(done) {
+				// No real good way to test this?
 				var pool = Workers.newFixedWorkerPool(1);
+				var progCnt = 0;
 
+				pool.submit(function() {
+					function report() {
+						w.progress();
+						setTimeout(report, 20);
+					}
+					setTimeout(report, 0);
+				}).progress(function() {
+					progCnt += 1;
+				});
+
+				var lastCnt = progCnt;
+				setTimeout(function() {
+					expect(lastCnt).to.not.equal(progCnt);
+
+					pool.terminate();
+
+					setTimeout(function() {
+						lastCnt = progCnt;
+						setTimeout(function() {
+							expect(lastCnt).to.equal(progCnt);
+							done();
+						});
+					}, 30);
+				}, 30);
 			});
 
 			// Run function with with so that they have access to 
