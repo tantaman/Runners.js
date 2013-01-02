@@ -289,25 +289,33 @@ function(Workers) {
 		});
 
 		describe('newWorker', function() {
-			it('Returns a worker that returns promises after promiseMessage calls', function() {
+			var worker = Workers.newWorker('../../test/spec/dummyPromisingWorker.js');
+			// TODO: the worker may not be ready..
+			// Need to add a ready listener so we know when all function registrations
+			// have been received.
 
-			});
+			// it('Returns a worker that returns promises after promiseMessage calls', function() {
+
+			// });
 
 			it('Provides a function map', function() {
-
+				console.log(worker.fns);
+				worker.fns.soren().then(function() {
+					console.log('Ran soren');
+				});
 			});
 
 			it('Allows arguments to be passed to the functions in the map', function() {
 
 			});
 
-			it('Allows a context to be passed', function() {
+			// it('Allows a context to be passed', function() {
 
-			});
+			// });
 
-			it('Allows context and args to be passed', function() {
+			// it('Allows context and args to be passed', function() {
 
-			});
+			// });
 
 			it('Returns a promise when invoking a function from the func map', function() {
 
@@ -317,7 +325,7 @@ function(Workers) {
 
 			});
 
-			it('Can just execute the named function and not return a promise if desired', function() {
+			it('Does not return a promise for a function if specified for that func', function() {
 
 			});
 

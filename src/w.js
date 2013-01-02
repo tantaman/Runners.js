@@ -348,7 +348,7 @@
 			return new WorkerPool(queue, 1);
 		},
 
-		newWorker: function() {
+		newWorker: function(url) {
 			// Make a worker whose postMessage methods return promises?
 			// it is the user's worker...
 			// so we'll need to modify onMessage somehow so it returns
@@ -361,7 +361,7 @@
 
 			// Allow promiseMessage(msg, timeout)?
 			// to expire the promises?
-			throw 'Not yet implemented';
+			return new PromisingWorker(url);
 		}
 	};
 
@@ -584,7 +584,7 @@
 
 	var proto = WorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
 	proto._createActualWorker = function() {
-		return new Worker(workerFactory._cfg.baseUrl + '/worker.js');
+		return new Worker(workerFactory._cfg.baseUrl + '/internal/worker.js');
 	};
 	
 
@@ -594,9 +594,68 @@
 
 	proto = ScheduledWorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
 	proto._createActualWorker = function() {
-		return new Worker(workerFactory._cfg.baseUrl + '/scheduledWorker.js');
+		return new Worker(workerFactory._cfg.baseUrl + '/internal/scheduledWorker.js');
 	};
 
+	function PromisingWorker(url) {
+		var w = new Worker(workerFactory._cfg.baseUrl + '/internal/promisingWorker.js#' + url);
+		var channel = new MessageChannel();
+
+		w.postMessage('internalComs', [channel.port2]);
+
+		channel.port1.onmessage = this._messageReceived.bind(this);
+		this._channel = channel;
+		this._invokeId = 0;
+		this._promises = {};
+		this.fns = {};
+
+		return this;
+	}
+
+	PromisingWorker.prototype = {
+		_messageReceived: function(e) {
+			// invokeId -> promise
+			switch (e.data.type) {
+				case 'registration':
+					this.fns[e.data.name] = this._createInvoker(e.data);
+				break;
+				case 'completed':
+					var promise = this._promises[e.data.id];
+					delete this._promises[e.data.id];
+					promise._setState('resolved');
+				break;
+				case 'failed':
+					var promise = this._promises[e.data.id];
+					delete this._promises[e.data.id];
+					promise._setState('rejected');
+				break;
+			}
+		},
+
+		_createInvoker: function(registration) {
+			var self = this;
+
+			return function() {
+				var msg = {
+						type: 'invoke',
+						func: registration.name,
+						id: ++self._invokeId,
+						args: Array.prototype.slice.call(arguments, 0)
+					};
+				var promise;
+				if (registration.promise) {
+					promise = self._promises[msg.id] = new Promise();
+				}
+
+				self._channel.port1.postMessage(msg);
+				return promise;
+			};
+		},
+
+		invoke: function(fname, args, context) {
+
+		}
+	};
 
 	window.Workers = workerFactory;
 

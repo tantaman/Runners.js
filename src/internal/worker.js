@@ -16,7 +16,7 @@ var w = {
 		if (!this._async)
 			throw "Can't call done for a synchronous task";
 
-		if (err) {
+		if (err !== undefined) {
 			self.postMessage({type: 'failed', result: err});
 		} else {
 			self.postMessage({type: 'completed', result: result});
