@@ -38,10 +38,11 @@
 		return iface;
 	}
 
-	function Promise() {
+	function Promise(interruptListener) {
 		this._progressCbs = [];
 		this._doneCbs = [];
 		this._failCbs = [];
+		this._interruptListener = interruptListener;
 
 		this._doneFilter = identity;
 		this._failFilter = identity;
@@ -54,6 +55,8 @@
 			this._doneCbs = combine(this._doneCbs, doneBacks);
 			this._failCbs = combine(this._failCbs, failBacks);
 			this._progressCbs = combine(this._progressCbs, progressBacks);
+
+			return this;
 		},
 
 		done: function() {
@@ -62,6 +65,8 @@
 			} else if (this._state === 'pending') {
 				this._doneCbs = combineArgs(this._doneCbs, arguments);
 			}
+
+			return this;
 		},
 
 		fail: function() {
@@ -70,17 +75,23 @@
 			} else if (this._state === 'pending') {
 				this._failCbs = combineArgs(this._failCbs, arguments);
 			}
+
+			return this;
 		},
 
 		always: function() {
 			this.done.apply(this, arguments);
 			this.fail.apply(this, arguments);
+
+			return this;
 		},
 
 		progress: function() {
 			if (this._state === 'pending') {
 				this._progressCbs = combineArgs(this._progressCbs, arguments);
 			}
+
+			return this;
 		},
 
 		pipe: function(doneFilter, failFilter) {
@@ -95,6 +106,15 @@
 					this._result = this._doneFilter(this._result);
 				break;
 			}
+
+			return this;
+		},
+
+		interrupt: function() {
+			if (this._interruptListener)
+				this._interruptListener();
+
+			return this;
 		},
 
 		state: function() {
@@ -382,6 +402,22 @@
 			this.worker.terminate();
 		},
 
+		addTask: function(task) {
+			this.currentTask = task;
+			var self = this;
+			// TODO: will need to bind interrupt to a specific task at some point.
+			// If we are going to allow interleaving of async tasks within a worker.
+			task.onInterruptRequest(function() {
+				self.postMessage({
+					type: 'interrupt'
+				});
+			});
+		},
+
+		// TODO: if we allow multiple tasks on one worker
+		// (e.g., a-sync tasks) then
+		// currentTask will need to be a map
+		// of task-id to task.
 		_workCompleted: function(data) {
 			var state;
 			if (data.type === 'failed') {
@@ -400,13 +436,18 @@
 
 	function TaskWrapper(task) {
 		this.task = task;
-		this._promise = new Promise();
+		this._promise = new Promise(this._interruptRequested.bind(this));
 		this._publicPromise = createPublicInterface(this._promise);
+		this._interruptRequestListeners = [];
 	}
 
 	TaskWrapper.prototype = {
 		promise: function() {
 			return this._publicPromise;
+		},
+
+		onInterruptRequest: function(cb) {
+			this._interruptRequestListeners.push(cb);
 		},
 
 		_setState: function(state, result) {
@@ -415,6 +456,12 @@
 
 		_progressMade: function(data) {
 			this._promise._progressMade(data);
+		},
+
+		_interruptRequested: function() {
+			this._interruptRequestListeners.forEach(function(cb) {
+				cb();
+			}, this);
 		}
 	}
 
@@ -435,6 +482,9 @@
 
 	AbstractWorkerPool.prototype = {
 		submit: function(args, context, func, id) {
+			if (this._terminated)
+				throw 'Pool has been terminated and can not accept new tasks.';
+
 			var normalizedArgs = normalizeArgs(args, context, func, id);
 			var wrappedTask = new TaskWrapper(normalizedArgs);
 
@@ -468,8 +518,8 @@
 			wrappedTask.task.func = wrappedTask.task.func.toString();
 
 			worker.runningNode = this._runningWorkers.add(worker);
-			worker.currentTask = wrappedTask;
-			worker.postMessage(wrappedTask.task);
+			worker.addTask(wrappedTask);
+			worker.postMessage({type: 'task', data: wrappedTask.task});
 		},
 
 		_createWorker: function() {
@@ -491,6 +541,10 @@
 			this._idleWorkers.forEach(function(worker) {
 				worker.terminate();
 			}, this);
+
+			this._runningWorkers.clear();
+			this._idleWorkers.clear();
+			this._terminated = true;
 		},
 
 		_receiveWorkerMessage: function(worker, e) {

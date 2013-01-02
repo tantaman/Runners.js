@@ -67,9 +67,29 @@ function(Workers) {
 				});
 
 				promise.done(function(result) {
-					expect(result).to.equal('resultpiped');
-					done();
+					try {
+						expect(result).to.equal('resultpiped');
+						done();
+					} catch (e) {
+						done(e);
+					}
 				});
+			});
+
+			it('Provides features for runnig async tasks', function(done) {
+				pool.submit(function() {
+					w.async(true);
+					setTimeout(function() {
+						w.done(':)');
+					}, 30);
+				}).then(function(result) {
+					try {
+						expect(result).to.equal(':)');
+						done();
+					} catch (e) {
+						done(e);
+					}
+				}, failure);
 			});
 
 			it('Provides a shutdown mechanism to terminate workers', function(done) {
@@ -116,8 +136,46 @@ function(Workers) {
 				expect(pool.numWorkers()).to.equal(3);
 			});
 
-			it('Runs N tasks concurrently', function() {
+			it('Runs N tasks concurrently', function(done) {
+				var t1Cnt = 0, t2Cnt = 0, t3Cnt = 0;
+				var prevT1Cnt = t1Cnt, prevT2Cnt = t2Cnt, prevT3Cnt = t3Cnt;
 
+				var task = function() {
+					w.async(true).interleave(false);
+					function makeProgress() {
+						if (!w.interrupted) {
+							w.progress();
+							setTimeout(makeProgress, 15);
+						} else {
+							w.done();
+						}
+					}
+					makeProgress();
+				};
+
+				var t1Promise = pool.submit(task).progress(function() {
+					t1Cnt++;
+				});
+
+				var t2Promise = pool.submit(task).progress(function() {
+					t2Cnt++;
+				});
+
+				var t3Promise = pool.submit(task).progress(function() {
+					t3Cnt++;
+				});
+
+				setTimeout(function() {
+					expect(t1Cnt).to.not.equal(prevT1Cnt);
+					expect(t2Cnt).to.not.equal(prevT2Cnt);
+					expect(t3Cnt).to.not.equal(prevT3Cnt);
+
+					done();
+
+					t1Promise.interrupt();
+					t2Promise.interrupt();
+					t3Promise.interrupt();
+				}, 30);
 			});
 
 			it('Puts pending tasks in a queue when all workers are busy', function() {
