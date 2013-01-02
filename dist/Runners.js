@@ -587,6 +587,8 @@ AbstractRunnerPool.prototype = {
 			case 'progress':
 				worker._progressMade(e.data.data);
 			break;
+			case 'interleave':
+			break;
 		}
 	}
 };
@@ -596,10 +598,10 @@ AbstractRunnerPool.prototype = {
 
 var proto = RunnerPool.prototype = Object.create(AbstractRunnerPool.prototype);
 proto._createActualWorker = function() {
-	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/worker.js');
+	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/runner.js');
 };
 ;function PromisingWorker(url) {
-	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/promisingWorker.js#' + url);
+	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/pWorker.js#' + url);
 	var channel = new MessageChannel();
 
 	w.postMessage('internalComs', [channel.port2]);
@@ -633,6 +635,10 @@ PromisingWorker.prototype = {
 			break;
 			case 'ready':
 				this._ready();
+			break;
+			case 'progress':
+			break;
+			case 'interleave':
 			break;
 		}
 	},
@@ -677,12 +683,23 @@ PromisingWorker.prototype = {
 
 	}
 };
-function AbstractWorkerPool(taskQueue, minWorkers, maxWorkers) {
-	
+function AbstractPWorkerPool(taskQueue, minWorkers, maxWorkers) {
+	this._queue = taskQueue;
+	this._minWorkers = minWorkers;
+	this._maxWorkers = maxWorkers;
+	this._runningWorkers = new LinkedList();
+	this._idleWorkers = new LinkedList();
+
+	for (var i = 0; i < minWorkers; ++i) {
+		var worker = this._createWorker();
+		this._idleWorkers.add(worker);
+	}
 }
 
-AbstractWorkerPool.prototype = {
-
+AbstractPWorkerPool.prototype = {
+	_createWorker: function() {
+		
+	}
 };
 
 ;window.Runners = workerFactory;

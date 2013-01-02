@@ -1,5 +1,5 @@
 ;function PromisingWorker(url) {
-	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/promisingWorker.js#' + url);
+	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/pWorker.js#' + url);
 	var channel = new MessageChannel();
 
 	w.postMessage('internalComs', [channel.port2]);
@@ -33,6 +33,10 @@ PromisingWorker.prototype = {
 			break;
 			case 'ready':
 				this._ready();
+			break;
+			case 'progress':
+			break;
+			case 'interleave':
 			break;
 		}
 	},

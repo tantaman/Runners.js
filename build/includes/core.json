@@ -9,6 +9,6 @@
 	"../src/runners/AbstractRunnerPool.js",
 	"../src/runners/RunnerPool.js",
 	"../src/workers/PromisingWorker.js",
-	"../src/workers/AbstractWorkerPool.js",
+	"../src/workers/AbstractPWorkerPool.js",
 	"../src/Runners.js"
 ]

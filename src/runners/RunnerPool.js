@@ -4,5 +4,5 @@
 
 var proto = RunnerPool.prototype = Object.create(AbstractRunnerPool.prototype);
 proto._createActualWorker = function() {
-	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/worker.js');
+	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/runner.js');
 };

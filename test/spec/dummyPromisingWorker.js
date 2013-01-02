@@ -17,9 +17,9 @@ w.register('noPromises', function() {
 
 }, false);
 
-w.register('myAsync', function(a1, done) {
-	done = arguments[arguments.length - 1];
+w.register('myAsync', function(a1, w) {
+	w = arguments[arguments.length - 1];
 	setTimeout(function() {
-		done('async ran');
+		w.done('async ran');
 	}, 15);
 }, true, true);

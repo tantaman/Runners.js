@@ -126,6 +126,8 @@ AbstractRunnerPool.prototype = {
 			case 'progress':
 				worker._progressMade(e.data.data);
 			break;
+			case 'interleave':
+			break;
 		}
 	}
 };

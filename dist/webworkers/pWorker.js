@@ -8,7 +8,7 @@ self.onmessage = function(e) {
 		};
 	}
 
-	onmessage = null;
+	self.onmessage = null;
 
 	self.w = {
 		register: function(name, func, promise, async) {
@@ -35,27 +35,38 @@ self.onmessage = function(e) {
 		}
 	};
 
+	var ws = {};
+
 	function invoke(msg) {
 		var registration = self._internal.funcs[msg.func];
 
-		function done(result, err) {
-			if (err !== undefined) {
-				var type = 'failed';
-				result = err;
-			} else {
-				var type = 'completed';
-			}
+		var w = {
+			done: function (result, err) {
+				delete ws[msg.id];
+				if (err !== undefined) {
+					var type = 'failed';
+					result = err;
+				} else {
+					var type = 'completed';
+				}
 
-			self._internal._port.postMessage({
-				type: type,
-				result: result,
-				id: msg.id
-			});
-		}
+				if (!registration.promise)
+					return;
+
+				self._internal._port.postMessage({
+					type: type,
+					result: result,
+					id: msg.id
+				});
+			},
+			interrupted: false
+		};
+
+		ws[msg.id] = w;			
 
 		var args;
 		if (registration.async) {
-			args = msg.args.concat(msg.args, done);
+			args = msg.args.concat(msg.args, w);
 		} else {
 			args = msg.args;
 		}
@@ -68,13 +79,10 @@ self.onmessage = function(e) {
 			result = e;
 			ex = true;
 		} finally {
-			if (!registration.promise)
-				return;
-
 			if (ex) {
-				done(null, result);
+				w.done(null, result);
 			} else if (!registration.async) {
-				done(result);
+				w.done(result);
 			}
 		}
 	}
@@ -83,6 +91,9 @@ self.onmessage = function(e) {
 		switch (e.data.type) {
 			case 'invoke':
 				invoke(e.data);
+			break;
+			case 'interrupt':
+				ws[e.data.id].interrupted = true;
 			break;
 		}
 	};
