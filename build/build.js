@@ -55,8 +55,9 @@ function main(){
 	}
     
     var buffer = [
-        ";(function(window) {\n",
-        "'use strict';\n"
+        ";(function(window) {",
+        "'use strict';",
+        "var Runners = {};"
     ];
     var sources = [];
     for (var i = 0;i < args.include.length;i++){
@@ -69,8 +70,8 @@ function main(){
     }
     console.log(buffer.length);
 
-    buffer.push("\n}(this));");
-    var temp = buffer.join("");
+    buffer.push("}(this));");
+    var temp = buffer.join("\n");
     
     if (!args.minify){
         fs.writeFileSync(output,temp,'utf8');

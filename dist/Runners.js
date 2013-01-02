@@ -1,5 +1,6 @@
 ;(function(window) {
 'use strict';
+var Runners = {};
 function identity(a) { return a; }
 
 function combineArgs(array, args) {
@@ -35,7 +36,8 @@ function createPublicInterface(object) {
 	}
 
 	return iface;
-}function Promise(interruptListener) {
+}
+function Promise(interruptListener) {
 	this._progressCbs = [];
 	this._doneCbs = [];
 	this._failCbs = [];
@@ -183,7 +185,8 @@ Promise.prototype = {
 			}
 		}, this);
 	}
-};function LinkedList() {
+};
+function LinkedList() {
 	this._head = null;
 	this._tail = null;
 	this._size = 0;
@@ -283,7 +286,8 @@ LinkedList.prototype = {
 	},
 
 	size: function() { return this._size; }
-};function Queue(maxSize) {
+};
+function Queue(maxSize) {
 	this._maxSize = (maxSize == null) ? -1 : maxSize;
 	this._list = new LinkedList();
 }
@@ -308,7 +312,8 @@ Queue.prototype = {
 	},
 
 	size: function() { return this._list.size(); }
-};var workerFactory = {
+};
+var workerFactory = {
 	_cfg: {
 		baseUrl: '.'
 	},
@@ -350,7 +355,7 @@ Queue.prototype = {
 		return new RunnerPool(queue, 1);
 	},
 
-	newWorker: function(url) {
+	newPWorker: function(url) {
 		// Make a worker whose postMessage methods return promises?
 		// it is the user's worker...
 		// so we'll need to modify onMessage somehow so it returns
@@ -374,7 +379,8 @@ Queue.prototype = {
 	// It would make sense to have one...
 	// load up the same script in multiple workers and farm out calls
 	// to available workers...
-};;function WorkerWrapper(worker) {
+};
+;function WorkerWrapper(worker) {
 	this.worker = worker;
 }
 
@@ -422,7 +428,8 @@ WorkerWrapper.prototype = {
 	_progressMade: function(data) {
 		this.currentTask._progressMade(data);
 	}
-};;function TaskWrapper(task) {
+};
+;function TaskWrapper(task) {
 	this.task = task;
 	this._promise = new Promise(this._interruptRequested.bind(this));
 	this._publicPromise = createPublicInterface(this._promise);
@@ -451,7 +458,8 @@ TaskWrapper.prototype = {
 			cb();
 		}, this);
 	}
-};function normalizeArgs(args, context, func, id) {
+}
+;function normalizeArgs(args, context, func, id) {
 	if (typeof args === 'function') {
 		func = args;
 		id = context;
@@ -581,15 +589,17 @@ AbstractRunnerPool.prototype = {
 			break;
 		}
 	}
-};;function RunnerPool(taskQueue, numWorkers) {
+};
+;function RunnerPool(taskQueue, numWorkers) {
 	AbstractRunnerPool.call(this, taskQueue, numWorkers, numWorkers);
 };
 
 var proto = RunnerPool.prototype = Object.create(AbstractRunnerPool.prototype);
 proto._createActualWorker = function() {
-	return new Worker(workerFactory._cfg.baseUrl + '/internal/worker.js');
-};;function PromisingWorker(url) {
-	var w = new Worker(workerFactory._cfg.baseUrl + '/internal/promisingWorker.js#' + url);
+	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/worker.js');
+};
+;function PromisingWorker(url) {
+	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/promisingWorker.js#' + url);
 	var channel = new MessageChannel();
 
 	w.postMessage('internalComs', [channel.port2]);
@@ -666,13 +676,15 @@ PromisingWorker.prototype = {
 	invoke: function(fname, args, context) {
 
 	}
-};function AbstractWorkerPool(taskQueue, minWorkers, maxWorkers) {
+};
+function AbstractWorkerPool(taskQueue, minWorkers, maxWorkers) {
 	
 }
 
 AbstractWorkerPool.prototype = {
 
 };
+
 ;window.Runners = workerFactory;
 
 if (typeof define !== 'undefined') {

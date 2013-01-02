@@ -3,7 +3,7 @@ function(Runners) {
 	'use strict';
 
 	Runners.config({
-		baseUrl: '../src'
+		baseUrl: '../dist'
 	});
 
 	function failure() {
@@ -11,7 +11,7 @@ function(Runners) {
 	}
 
 	describe('Runners', function() {
-		describe('All worker pools (AbstractWorkerPool)', function() {
+		describe('All runner pools (AbstractRunnerPool)', function() {
 			var pool = Runners.newFixedRunnerPool(2);
 			it('Allows submission of functions', function(done) {
 				pool.submit(function() {
@@ -151,7 +151,7 @@ function(Runners) {
 			});
 		});
 
-		describe('FixedWorkerPool', function() {
+		describe('FixedRunnerPool', function() {
 			var pool = Runners.newFixedRunnerPool(3);
 			it('Allocates N workers', function() {
 				expect(pool.numWorkers()).to.equal(3);
@@ -253,7 +253,7 @@ function(Runners) {
 			});
 		});
 
-		describe('CachedWorkerPool', function() {
+		describe('CachedRunnerPool', function() {
 			it('Allocates new workers as needed', function() {
 
 			});
@@ -286,7 +286,7 @@ function(Runners) {
 			}
 			task();
 		});*/
-		describe('ScheduledWorkerPool', function() {
+		describe('ScheduledRunnerPool', function() {
 			describe('schedule', function() {
 				it('Allows a task to be scheduled at a fixed interval', function() {
 
@@ -300,7 +300,7 @@ function(Runners) {
 		});
 
 		describe('newPWorker', function() {
-			var worker = Runners.newWorker('../../test/spec/dummyPromisingWorker.js');
+			var worker = Runners.newPWorker('../../test/spec/dummyPromisingWorker.js');
 			// TODO: the worker may not be ready..
 			// Need to add a ready listener so we know when all function registrations
 			// have been received.

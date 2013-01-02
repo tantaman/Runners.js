@@ -1,5 +1,5 @@
 ;function PromisingWorker(url) {
-	var w = new Worker(workerFactory._cfg.baseUrl + '/internal/promisingWorker.js#' + url);
+	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/promisingWorker.js#' + url);
 	var channel = new MessageChannel();
 
 	w.postMessage('internalComs', [channel.port2]);

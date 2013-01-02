@@ -40,7 +40,7 @@ var workerFactory = {
 		return new RunnerPool(queue, 1);
 	},
 
-	newWorker: function(url) {
+	newPWorker: function(url) {
 		// Make a worker whose postMessage methods return promises?
 		// it is the user's worker...
 		// so we'll need to modify onMessage somehow so it returns
