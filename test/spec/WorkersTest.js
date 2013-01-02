@@ -275,6 +275,17 @@ function(Workers) {
 			});
 		});
 
+		/*
+		Don't really need this.
+		We can accomplish the same things via:
+		worker.submit(function() {
+			w.async(true).interleaving(true);
+			function task() {
+				code...
+				setTimeout(task, 50);
+			}
+			task();
+		});*/
 		describe('ScheduledWorkerPool', function() {
 			describe('schedule', function() {
 				it('Allows a task to be scheduled at a fixed interval', function() {
@@ -288,8 +299,8 @@ function(Workers) {
 			});
 		});
 
-		describe('newWorker', function() {
-			var worker = Workers.newWorker('../../test/spec/dummyPromisingWorker.js');
+		describe('newPWorker', function() {
+			var worker = Workers.newPWorker('../../test/spec/dummyPromisingWorker.js');
 			// TODO: the worker may not be ready..
 			// Need to add a ready listener so we know when all function registrations
 			// have been received.
@@ -298,15 +309,30 @@ function(Workers) {
 
 			// });
 
-			it('Provides a function map', function() {
-				console.log(worker.fns);
-				worker.fns.soren().then(function() {
-					console.log('Ran soren');
+			it('Provides a function map', function(done) {
+				worker.ready(function() {
+					var funcs = Object.keys(worker.fns);
+					expect(funcs).to.deep.equal(['noPromises', 'myAsync', 'soren', 'kant', 'either']);
+					done();
 				});
 			});
 
-			it('Allows arguments to be passed to the functions in the map', function() {
+			it('Returns a promise when invoking a function from the func map', function(done) {
+				worker.ready(function() {
+					worker.fns.soren().then(function(result) {
+						expect(result).to.equal('kierk');
+						done();
+					});
+				});
+			});
 
+			it('Allows arguments to be passed to the functions in the map', function(done) {
+				worker.ready(function() {
+					worker.fns.either(1, 2).then(function(result) {
+						expect(result).to.equal('1or2');
+						done();
+					});
+				});
 			});
 
 			// it('Allows a context to be passed', function() {
@@ -317,24 +343,24 @@ function(Workers) {
 
 			// });
 
-			it('Returns a promise when invoking a function from the func map', function() {
-
-			});
-
-			it('Can provide the names of its registered functions', function() {
-
-			});
-
-			it('Does not return a promise for a function if specified for that func', function() {
-
+			it('Does not return a promise for a function if specified for that func', function(done) {
+				worker.ready(function() {
+					expect(worker.fns.noPromises()).to.equal(undefined);
+					done();
+				});
 			});
 
 			it('Returns interruptable promises', function() {
 
 			});
 
-			it('Allows registration of async functions', function() {
-
+			it('Allows registration of async functions', function(done) {
+				worker.ready(function() {
+					worker.fns.myAsync().then(function(result) {
+						expect(result).to.equal('async ran');
+						done();
+					});
+				});
 			});
 		});
 

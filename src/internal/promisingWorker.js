@@ -26,6 +26,12 @@ self.onmessage = function(e) {
 				name: name,
 				promise: promise
 			});
+		},
+
+		ready: function() {
+			self._internal._port.postMessage({
+					type: 'ready'
+			});
 		}
 	};
 
@@ -91,4 +97,6 @@ self.onmessage = function(e) {
 			}
 		}
 	}
+
+	self.w.ready();
 }

@@ -339,16 +339,28 @@
 			throw 'Not yet implemented';
 		},
 
-		newScheduledWorkerPool: function(numWorkers) {
-			throw 'Not yet implemented';
-		},
+		// Don't really need this
+		// We can accomplish the same things via:
+		/*
+		worker.submit(function() {
+			w.async(true).interleaving(true);
+			function task() {
+				code...
+				setTimeout(task, 50);
+			}
+			task();
+		});
+		*/
+		// newScheduledWorkerPool: function(numWorkers) {
+		// 	throw 'Not yet implemented';
+		// },
 
 		newSingleWorkerPool: function() {
 			var queue = new Queue();
 			return new WorkerPool(queue, 1);
 		},
 
-		newWorker: function(url) {
+		newPWorker: function(url) {
 			// Make a worker whose postMessage methods return promises?
 			// it is the user's worker...
 			// so we'll need to modify onMessage somehow so it returns
@@ -362,7 +374,16 @@
 			// Allow promiseMessage(msg, timeout)?
 			// to expire the promises?
 			return new PromisingWorker(url);
+		},
+
+		newFixedPWorkerPool: function() {
+
 		}
+
+		// TODO: PWorker pool?
+		// It would make sense to have one...
+		// load up the same script in multiple workers and farm out calls
+		// to available workers...
 	};
 
 	function normalizeArgs(args, context, func, id) {
@@ -586,16 +607,6 @@
 	proto._createActualWorker = function() {
 		return new Worker(workerFactory._cfg.baseUrl + '/internal/worker.js');
 	};
-	
-
-	function ScheduledWorkerPool() {
-		AbstractWorkerPool.apply(this, arguments);
-	};
-
-	proto = ScheduledWorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
-	proto._createActualWorker = function() {
-		return new Worker(workerFactory._cfg.baseUrl + '/internal/scheduledWorker.js');
-	};
 
 	function PromisingWorker(url) {
 		var w = new Worker(workerFactory._cfg.baseUrl + '/internal/promisingWorker.js#' + url);
@@ -607,6 +618,7 @@
 		this._channel = channel;
 		this._invokeId = 0;
 		this._promises = {};
+		this._readyCbs = [];
 		this.fns = {};
 
 		return this;
@@ -622,12 +634,15 @@
 				case 'completed':
 					var promise = this._promises[e.data.id];
 					delete this._promises[e.data.id];
-					promise._setState('resolved');
+					promise._setState('resolved', e.data.result);
 				break;
 				case 'failed':
 					var promise = this._promises[e.data.id];
 					delete this._promises[e.data.id];
-					promise._setState('rejected');
+					promise._setState('rejected', e.data.result);
+				break;
+				case 'ready':
+					this._ready();
 				break;
 			}
 		},
@@ -652,9 +667,33 @@
 			};
 		},
 
+		ready: function(cb) {
+			if (this._isReady) {
+				cb();
+			} else {
+				this._readyCbs.push(cb);
+			}
+		},
+
+		_ready: function() {
+			this._readyCbs.forEach(function(cb) {
+				cb();
+			});
+			this._isReady = true;
+			this._readyCbs = [];
+		},
+
 		invoke: function(fname, args, context) {
 
 		}
+	};
+
+	function AbstractPWorkerPool(taskQueue, minWorkers, maxWorkers) {
+		
+	}
+
+	AbstractPWorkerPool.prototype = {
+
 	};
 
 	window.Workers = workerFactory;
