@@ -145,6 +145,10 @@ function(Workers) {
 
 				promise.interrupt();
 			});
+
+			it('Can cache tasks so as to not require re-serialization of the task function', function() {
+
+			});
 		});
 
 		describe('FixedWorkerPool', function() {
@@ -222,8 +226,22 @@ function(Workers) {
 				}, 45);
 			});
 
-			it('Runs pending tasks when a worker becomes free', function() {
+			it('Runs pending tasks when a worker becomes free', function(done) {
+				var pool = Workers.newSingleWorkerPool();
 
+				pool.submit(function() {
+					w.async(true).interleave(false);
+					setTimeout(function() {
+						w.done();
+					}, 15);
+				});
+
+				pool.submit(function() {
+					return 'ran';
+				}).then(function(result) {
+					expect(result).to.equal('ran');
+					done();
+				}, failure);
 			});
 
 			it('Allows specification of queue size', function() {
@@ -244,7 +262,7 @@ function(Workers) {
 
 			});
 
-			it('Allocates a new worker if the quee is full', function() {
+			it('Allocates a new worker if the queue is full', function() {
 
 			});
 
@@ -257,8 +275,59 @@ function(Workers) {
 			});
 		});
 
-		describe('newWorker', function() {
+		describe('ScheduledWorkerPool', function() {
+			describe('schedule', function() {
+				it('Allows a task to be scheduled at a fixed interval', function() {
 
+				});
+
+				it('Allows a task to be scheduled with a fixed delay between runs',
+				function() {
+
+				});
+			});
+		});
+
+		describe('newWorker', function() {
+			it('Returns a worker that returns promises after promiseMessage calls', function() {
+
+			});
+
+			it('Provides a function map', function() {
+
+			});
+
+			it('Allows arguments to be passed to the functions in the map', function() {
+
+			});
+
+			it('Allows a context to be passed', function() {
+
+			});
+
+			it('Allows context and args to be passed', function() {
+
+			});
+
+			it('Returns a promise when invoking a function from the func map', function() {
+
+			});
+
+			it('Can provide the names of its registered functions', function() {
+
+			});
+
+			it('Can just execute the named function and not return a promise if desired', function() {
+
+			});
+
+			it('Returns interruptable promises', function() {
+
+			});
+
+			it('Allows registration of async functions', function() {
+
+			});
 		});
 
 		describe('promises', function() {

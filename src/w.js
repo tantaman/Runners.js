@@ -332,15 +332,20 @@
 
 		newFixedWorkerPool: function(numWorkers, queueCap) {
 			var queue = new Queue(queueCap);
-			return new FixedWorkerPool(queue, numWorkers);
+			return new WorkerPool(queue, numWorkers);
 		},
 
 		newCachedWorkerPool: function() {
-
+			throw 'Not yet implemented';
 		},
 
-		newScheduledWorkerPool: function() {
+		newScheduledWorkerPool: function(numWorkers) {
+			throw 'Not yet implemented';
+		},
 
+		newSingleWorkerPool: function() {
+			var queue = new Queue();
+			return new WorkerPool(queue, 1);
 		},
 
 		newWorker: function() {
@@ -356,6 +361,7 @@
 
 			// Allow promiseMessage(msg, timeout)?
 			// to expire the promises?
+			throw 'Not yet implemented';
 		}
 	};
 
@@ -572,21 +578,21 @@
 		}
 	};
 
-	function FixedWorkerPool(taskQueue, numWorkers) {
+	function WorkerPool(taskQueue, numWorkers) {
 		AbstractWorkerPool.call(this, taskQueue, numWorkers, numWorkers);
 	};
 
-	var proto = FixedWorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
+	var proto = WorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
 	proto._createActualWorker = function() {
 		return new Worker(workerFactory._cfg.baseUrl + '/worker.js');
 	};
 	
 
-	function CachedWorkerPool() {
+	function ScheduledWorkerPool() {
 		AbstractWorkerPool.apply(this, arguments);
 	};
 
-	proto = CachedWorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
+	proto = ScheduledWorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
 	proto._createActualWorker = function() {
 		return new Worker(workerFactory._cfg.baseUrl + '/scheduledWorker.js');
 	};

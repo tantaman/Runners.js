@@ -34,6 +34,10 @@ function receiveNewTask(e) {
 	var result;
 	var ex = false;
 	try {
+		// TODO: make a smarter way to reset to defaults
+		// TODO: will need to be per-task
+		w._async = false;
+		w._interleave = false;
 		result = func.apply(e.data.context, e.data.args);
 	} catch (e) {
 		result = e;
