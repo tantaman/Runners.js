@@ -54,7 +54,10 @@ function main(){
 		sourcemap = sourcemapping = sourcemapargs = '';
 	}
     
-    var buffer = [];
+    var buffer = [
+        ";(function(window) {\n",
+        "'use strict';\n"
+    ];
     var sources = [];
     for (var i = 0;i < args.include.length;i++){
         
@@ -65,6 +68,8 @@ function main(){
         }
     }
     console.log(buffer.length);
+
+    buffer.push("\n}(this));");
     var temp = buffer.join("");
     
     if (!args.minify){

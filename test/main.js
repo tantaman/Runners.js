@@ -1,5 +1,5 @@
 require.config({
-	baseUrl: '../src',
+	baseUrl: '../dist',
 	paths: {
 		spec: '../test/spec'
 	}
