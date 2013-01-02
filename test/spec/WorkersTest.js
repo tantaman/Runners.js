@@ -123,10 +123,27 @@ function(Workers) {
 				}, 30);
 			});
 
-			// Run function with with so that they have access to 
-			// 'worker.interrupted' var?
-			it('Allows interruption of tasks / workers', function() {
-				// TODO
+			it('Allows interruption of tasks / workers', function(done) {
+				var promise = pool.submit(function() {
+					w.async(true).interleave(false);
+
+					function beBusy() {
+						if (!w.interrupted) {
+							setTimeout(beBusy, 5);
+						} else {
+							w.done('we were interrupted!');
+						}
+					}
+
+					setTimeout(beBusy, 5);
+				});
+
+				promise.then(function(result) {
+					expect(result).to.equal('we were interrupted!');
+					done();
+				}, failure);
+
+				promise.interrupt();
 			});
 		});
 
@@ -178,8 +195,31 @@ function(Workers) {
 				}, 30);
 			});
 
-			it('Puts pending tasks in a queue when all workers are busy', function() {
+			it('Puts pending tasks in a queue when all workers are busy', function(done) {
+				var pool = Workers.newFixedWorkerPool(2);
 
+				var task = function() {
+					w.async(true).interleave(false);
+					setTimeout(function() {
+						w.done();
+					}, 15);
+				};
+
+				pool.submit(task);
+				pool.submit(task);
+
+				expect(pool.queueSize()).to.equal(0);
+
+				pool.submit(task);
+				pool.submit(task);
+
+				expect(pool.queueSize()).to.equal(2);
+
+				setTimeout(function() {
+					expect(pool.queueSize()).to.equal(0);
+					pool.terminate();
+					done();
+				}, 45);
 			});
 
 			it('Runs pending tasks when a worker becomes free', function() {
