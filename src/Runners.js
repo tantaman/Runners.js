@@ -330,12 +330,12 @@
 			}
 		},
 
-		newFixedWorkerPool: function(numWorkers, queueCap) {
+		newFixedRunnerPool: function(numWorkers, queueCap) {
 			var queue = new Queue(queueCap);
-			return new WorkerPool(queue, numWorkers);
+			return new RunnerPool(queue, numWorkers);
 		},
 
-		newCachedWorkerPool: function() {
+		newCachedRunnerPool: function() {
 			throw 'Not yet implemented';
 		},
 
@@ -355,12 +355,12 @@
 		// 	throw 'Not yet implemented';
 		// },
 
-		newSingleWorkerPool: function() {
+		newSingleRunnerPool: function() {
 			var queue = new Queue();
-			return new WorkerPool(queue, 1);
+			return new RunnerPool(queue, 1);
 		},
 
-		newPWorker: function(url) {
+		newWorker: function(url) {
 			// Make a worker whose postMessage methods return promises?
 			// it is the user's worker...
 			// so we'll need to modify onMessage somehow so it returns
@@ -376,9 +376,9 @@
 			return new PromisingWorker(url);
 		},
 
-		newFixedPWorkerPool: function() {
+		// newFixedWorkerPool: function() {
 
-		}
+		// }
 
 		// TODO: PWorker pool?
 		// It would make sense to have one...
@@ -492,7 +492,7 @@
 		}
 	}
 
-	function AbstractWorkerPool(taskQueue, minWorkers, maxWorkers) {
+	function AbstractRunnerPool(taskQueue, minWorkers, maxWorkers) {
 		this._queue = taskQueue;
 		this._minWorkers = minWorkers;
 		this._maxWorkers = maxWorkers;
@@ -507,7 +507,7 @@
 		}
 	}
 
-	AbstractWorkerPool.prototype = {
+	AbstractRunnerPool.prototype = {
 		submit: function(args, context, func, id) {
 			if (this._terminated)
 				throw 'Pool has been terminated and can not accept new tasks.';
@@ -599,11 +599,11 @@
 		}
 	};
 
-	function WorkerPool(taskQueue, numWorkers) {
-		AbstractWorkerPool.call(this, taskQueue, numWorkers, numWorkers);
+	function RunnerPool(taskQueue, numWorkers) {
+		AbstractRunnerPool.call(this, taskQueue, numWorkers, numWorkers);
 	};
 
-	var proto = WorkerPool.prototype = Object.create(AbstractWorkerPool.prototype);
+	var proto = RunnerPool.prototype = Object.create(AbstractRunnerPool.prototype);
 	proto._createActualWorker = function() {
 		return new Worker(workerFactory._cfg.baseUrl + '/internal/worker.js');
 	};
@@ -696,7 +696,7 @@
 
 	};
 
-	window.Workers = workerFactory;
+	window.Runners = workerFactory;
 
 	if (typeof define !== 'undefined') {
 		define(function() {

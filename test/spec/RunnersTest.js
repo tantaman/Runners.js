@@ -1,8 +1,8 @@
-define(['w'],
-function(Workers) {
+define(['Runners'],
+function(Runners) {
 	'use strict';
 
-	Workers.config({
+	Runners.config({
 		baseUrl: '../src'
 	});
 
@@ -10,9 +10,9 @@ function(Workers) {
 		throw 'Task failed';
 	}
 
-	describe('Workers', function() {
+	describe('Runners', function() {
 		describe('All worker pools (AbstractWorkerPool)', function() {
-			var pool = Workers.newFixedWorkerPool(2);
+			var pool = Runners.newFixedRunnerPool(2);
 			it('Allows submission of functions', function(done) {
 				pool.submit(function() {
 					return 'ran';
@@ -94,7 +94,7 @@ function(Workers) {
 
 			it('Provides a shutdown mechanism to terminate workers', function(done) {
 				// No real good way to test this?
-				var pool = Workers.newFixedWorkerPool(1);
+				var pool = Runners.newFixedRunnerPool(1);
 				var progCnt = 0;
 
 				pool.submit(function() {
@@ -152,7 +152,7 @@ function(Workers) {
 		});
 
 		describe('FixedWorkerPool', function() {
-			var pool = Workers.newFixedWorkerPool(3);
+			var pool = Runners.newFixedRunnerPool(3);
 			it('Allocates N workers', function() {
 				expect(pool.numWorkers()).to.equal(3);
 			});
@@ -200,7 +200,7 @@ function(Workers) {
 			});
 
 			it('Puts pending tasks in a queue when all workers are busy', function(done) {
-				var pool = Workers.newFixedWorkerPool(2);
+				var pool = Runners.newFixedRunnerPool(2);
 
 				var task = function() {
 					w.async(true).interleave(false);
@@ -227,7 +227,7 @@ function(Workers) {
 			});
 
 			it('Runs pending tasks when a worker becomes free', function(done) {
-				var pool = Workers.newSingleWorkerPool();
+				var pool = Runners.newSingleRunnerPool();
 
 				pool.submit(function() {
 					w.async(true).interleave(false);
@@ -300,7 +300,7 @@ function(Workers) {
 		});
 
 		describe('newPWorker', function() {
-			var worker = Workers.newPWorker('../../test/spec/dummyPromisingWorker.js');
+			var worker = Runners.newWorker('../../test/spec/dummyPromisingWorker.js');
 			// TODO: the worker may not be ready..
 			// Need to add a ready listener so we know when all function registrations
 			// have been received.

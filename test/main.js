@@ -6,7 +6,7 @@ require.config({
 });
 
 require([
-'spec/WorkersTest'
+'spec/RunnersTest'
 ], function() {
   'use strict';
 

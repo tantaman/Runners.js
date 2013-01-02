@@ -1,11 +1,11 @@
 <html>
 <head>
 	<script type="text/javascript" src="src/WorkerConsole.js"></script>
-	<script type="text/javascript" src="src/w.js"></script>
+	<script type="text/javascript" src="src/Runners.js"></script>
 </head>
 <body>
 	<script>
-		var pool = Workers.newFixedWorkerPool(2);
+		var pool = Runners.newFixedRunnerPool(2);
 
 		// TODO: return promises
 		// TODO: allow callback when promise completes
