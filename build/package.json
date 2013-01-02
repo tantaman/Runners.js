@@ -1,0 +1,24 @@
+{
+    "name": "Runners.js",
+    "description": "WebWorker task management",
+    "version": "0.1.1",
+    "homepage" : "http://tantaman.github.com/Runners.js/",
+    "author": "Tantaman",
+    "help": {
+        "web": "http://stackoverflow.com/questions/tagged/Runners.js"
+    },
+
+    "devDependencies": {
+    	"uglify-js2": "*",
+    	"argparse" : "*"
+    },
+    
+    "repository" : {
+        "type" : "git",
+         "url" : "git://github.com/tantaman/Runners.js.git"
+    },
+    "licenses": [{
+        "type": "The MIT License",
+        "url": "https://raw.github.com/tantaman/Runners.js/master/LICENSE"
+    }]
+}
