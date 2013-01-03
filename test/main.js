@@ -6,11 +6,11 @@ require.config({
 });
 
 require([
+'../test/config',
 'spec/RunnersTest',
 'spec/PWorkersTest'
-], function() {
+], function(Config) {
   'use strict';
-
   var runner = mocha.run();
 
   if(!window.PHANTOMJS) return;

@@ -2,10 +2,6 @@ define(['Runners'],
 function(Runners) {
 	'use strict';
 
-	Runners.config({
-		baseUrl: '../dist'
-	});
-
 	function failure() {
 		throw 'Task failed';
 	}
