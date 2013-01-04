@@ -3,12 +3,5 @@
 	"../src/utils/Promise.js",
 	"../src/utils/LinkedList.js",
 	"../src/utils/Queue.js",
-	"../src/WorkerFactory.js",
-	"../src/runners/WorkerWrapper.js",
-	"../src/runners/TaskWrapper.js",
-	"../src/runners/AbstractRunnerPool.js",
-	"../src/runners/RunnerPool.js",
-	"../src/workers/PromisingWorker.js",
-	"../src/workers/AbstractPWorkerPool.js",
-	"../src/Runners.js"
+	"../src/WorkerFactory.js"
 ]

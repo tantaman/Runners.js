@@ -59,6 +59,15 @@ self.onmessage = function(e) {
 					id: msg.id
 				});
 			},
+
+			progress: function(data) {
+				self._internal._port.postMessage({
+					type: 'progress',
+					data: data,
+					id: msg.id
+				});
+			},
+
 			interrupted: false
 		};
 

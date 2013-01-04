@@ -1,0 +1,6 @@
+[
+	"../src/runners/WorkerWrapper.js",
+	"../src/runners/TaskWrapper.js",
+	"../src/runners/AbstractRunnerPool.js",
+	"../src/runners/RunnerPool.js"
+]

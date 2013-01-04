@@ -1,5 +1,11 @@
 function identity(a) { return a; }
 
+function remove(arr, item) {
+	var idx = arr.indexOf(item);
+	if (idx >= 0)
+		arr.splice(idx, 1);
+}
+
 function combineArgs(array, args) {
 	for (var i = 0; i < args.length; ++i) {
 		var arg = args[i];

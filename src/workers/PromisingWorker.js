@@ -11,15 +11,17 @@
 	this._readyCbs = [];
 	this.fns = {};
 
+	this._regCbs = [];
+
 	return this;
 }
 
 PromisingWorker.prototype = {
 	_messageReceived: function(e) {
-		// invokeId -> promise
 		switch (e.data.type) {
 			case 'registration':
-				this.fns[e.data.name] = this._createInvoker(e.data);
+				var fn = this.fns[e.data.name] = this._createInvoker(e.data);
+				this._notifyRegCbs(fn, e.data);
 			break;
 			case 'completed':
 				var promise = this._promises[e.data.id];
@@ -35,9 +37,11 @@ PromisingWorker.prototype = {
 				this._ready();
 			break;
 			case 'progress':
+				var promise = this._promises[e.data.id];
+				promise._progressMade(e.data.data);
 			break;
-			case 'interleave':
-			break;
+			// No sense in taking an 'interleave' message
+			// from a-sync tasks
 		}
 	},
 
@@ -57,8 +61,37 @@ PromisingWorker.prototype = {
 			}
 
 			self._channel.port1.postMessage(msg);
-			return promise;
+			return (promise) ? createPublicInterface(promise) : undefined;
 		};
+	},
+
+	// Just bring in your EventEmitter?
+	on: function(event, cb) {
+		switch (event) {
+			case 'registration':
+				this._regCbs.push(cb);
+			break;
+			case 'ready':
+				this.ready(cb);
+			break;
+		}
+	},
+
+	off: function(event, cb) {
+		switch (event) {
+			case 'registration':
+				remove(this._regCbs, cb);
+			break;
+			case 'ready':
+				remove(this._readyCbs, cb);
+			break;
+		}
+	},
+
+	_notifyRegCbs: function(func, registration) {
+		this._regCbs.forEach(function(cb) {
+			cb(func, registration);
+		});
 	},
 
 	ready: function(cb) {
@@ -75,9 +108,5 @@ PromisingWorker.prototype = {
 		});
 		this._isReady = true;
 		this._readyCbs = [];
-	},
-
-	invoke: function(fname, args, context) {
-
 	}
 };
