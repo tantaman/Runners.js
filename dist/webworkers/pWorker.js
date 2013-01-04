@@ -10,7 +10,7 @@ self.onmessage = function(e) {
 
 	self.onmessage = null;
 
-	self.w = {
+	self.workerContext = {
 		register: function(name, func, promise, async, interleave) {
 			if (promise !== false)
 				promise = true;
@@ -33,6 +33,14 @@ self.onmessage = function(e) {
 					type: 'ready',
 					err: err
 			});
+		},
+
+		invocation: function(context) {
+			if (context) {
+				this._invocation = context;
+			} else {
+				return this._invocation;
+			}
 		}
 	};
 
@@ -72,19 +80,13 @@ self.onmessage = function(e) {
 			interrupted: false
 		};
 
-		ws[msg.id] = w;			
-
-		var args;
-		if (registration.async) {
-			args = msg.args.concat(msg.args, w);
-		} else {
-			args = msg.args;
-		}
+		ws[msg.id] = w;
 
 		var ex = false;
 		var result;
 		try {
-			result = registration.func.apply(msg.context, args);
+			workerContext.invocation(w);
+			result = registration.func.apply(msg.context, msg.args);
 		} catch (e) {
 			result = e;
 			ex = true;
@@ -115,12 +117,12 @@ self.onmessage = function(e) {
 		if (typeof self.exports === 'object') {
 			for (var key in self.exports) {
 				if (self.exports.hasOwnProperty(key)) {
-					self.w.register(key, self.exports[key]);
+					self.workerContext.register(key, self.exports[key]);
 				}
 			}
 		}
-		self.w.ready();
+		self.workerContext.ready();
 	} catch(e) {
-		self.w.ready(e);
+		self.workerContext.ready(e.message);
 	}
 }

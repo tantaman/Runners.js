@@ -1,16 +1,16 @@
-;function normalizeArgs(args, context, func, id) {
+;function normalizeArgs(args, context, func, opts) {
 	if (typeof args === 'function') {
 		func = args;
-		id = context;
+		opts = context;
 		context = null;
 		args = null;
 	} else if (!Array.isArray(args) && typeof args === 'object') {
-		id = func;
+		opts = func;
 		func = context;
 		context = args;
 		args = null;
 	} else if (Array.isArray(args) && typeof context === 'function') {
-		id = func;
+		opts = func;
 		func = context;
 		context = null;
 	}
@@ -19,7 +19,7 @@
 		args: args,
 		context: context,
 		func: func,
-		id: id
+		opts: opts
 	};
 }
 
@@ -39,11 +39,11 @@ function AbstractRunnerPool(taskQueue, minWorkers, maxWorkers) {
 }
 
 AbstractRunnerPool.prototype = {
-	submit: function(args, context, func, id) {
+	submit: function(args, context, func, opts) {
 		if (this._terminated)
 			throw 'Pool has been terminated and can not accept new tasks.';
 
-		var normalizedArgs = normalizeArgs(args, context, func, id);
+		var normalizedArgs = normalizeArgs(args, context, func, opts);
 		var wrappedTask = new TaskWrapper(normalizedArgs);
 
 		if (this._idleWorkers.size() > 0) {

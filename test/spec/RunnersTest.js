@@ -74,11 +74,10 @@ function(Runners) {
 
 			it('Provides features for runnig async tasks', function(done) {
 				pool.submit(function() {
-					w.async(true);
 					setTimeout(function() {
-						w.done(':)');
+						ic.done(':)');
 					}, 30);
-				}).then(function(result) {
+				}, {async:true}).then(function(result) {
 					try {
 						expect(result).to.equal(':)');
 						done();
@@ -95,7 +94,7 @@ function(Runners) {
 
 				pool.submit(function() {
 					function report() {
-						w.progress();
+						ic.progress();
 						setTimeout(report, 20);
 					}
 					setTimeout(report, 0);
@@ -121,18 +120,16 @@ function(Runners) {
 
 			it('Allows interruption of tasks / workers', function(done) {
 				var promise = pool.submit(function() {
-					w.async(true).interleave(false);
-
 					function beBusy() {
-						if (!w.interrupted) {
+						if (!ic.interrupted) {
 							setTimeout(beBusy, 5);
 						} else {
-							w.done('we were interrupted!');
+							ic.done('we were interrupted!');
 						}
 					}
 
 					setTimeout(beBusy, 5);
-				});
+				}, {async:true});
 
 				promise.then(function(result) {
 					expect(result).to.equal('we were interrupted!');
@@ -158,27 +155,28 @@ function(Runners) {
 				var prevT1Cnt = t1Cnt, prevT2Cnt = t2Cnt, prevT3Cnt = t3Cnt;
 
 				var task = function() {
-					w.async(true).interleave(false);
 					function makeProgress() {
-						if (!w.interrupted) {
-							w.progress();
+						if (!ic.interrupted) {
+							ic.progress();
 							setTimeout(makeProgress, 15);
 						} else {
-							w.done();
+							ic.done();
 						}
 					}
 					makeProgress();
 				};
 
-				var t1Promise = pool.submit(task).progress(function() {
+				var opts = {async: true};
+
+				var t1Promise = pool.submit(task, opts).progress(function() {
 					t1Cnt++;
 				});
 
-				var t2Promise = pool.submit(task).progress(function() {
+				var t2Promise = pool.submit(task, opts).progress(function() {
 					t2Cnt++;
 				});
 
-				var t3Promise = pool.submit(task).progress(function() {
+				var t3Promise = pool.submit(task, opts).progress(function() {
 					t3Cnt++;
 				});
 
@@ -199,19 +197,20 @@ function(Runners) {
 				var pool = Runners.newFixedRunnerPool(2);
 
 				var task = function() {
-					w.async(true).interleave(false);
 					setTimeout(function() {
-						w.done();
+						ic.done();
 					}, 15);
 				};
 
-				pool.submit(task);
-				pool.submit(task);
+				var opts = {async:true};
+
+				pool.submit(task, opts);
+				pool.submit(task, opts);
 
 				expect(pool.queueSize()).to.equal(0);
 
-				pool.submit(task);
-				pool.submit(task);
+				pool.submit(task, opts);
+				pool.submit(task, opts);
 
 				expect(pool.queueSize()).to.equal(2);
 
@@ -226,11 +225,10 @@ function(Runners) {
 				var pool = Runners.newSingleRunnerPool();
 
 				pool.submit(function() {
-					w.async(true).interleave(false);
 					setTimeout(function() {
-						w.done();
+						ic.done();
 					}, 15);
-				});
+				}, {async:true});
 
 				pool.submit(function() {
 					return 'ran';
@@ -275,13 +273,12 @@ function(Runners) {
 		Don't really need this.
 		We can accomplish the same things via:
 		worker.submit(function() {
-			w.async(true).interleaving(true);
 			function task() {
 				code...
 				setTimeout(task, 50);
 			}
 			task();
-		});*/
+		}, {async:true, interleave: true});*/
 		describe('ScheduledRunnerPool', function() {
 			describe('schedule', function() {
 				it('Allows a task to be scheduled at a fixed interval', function() {

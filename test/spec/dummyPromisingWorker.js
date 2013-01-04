@@ -13,13 +13,13 @@ self.exports = {
 	}
 };
 
-w.register('noPromises', function() {
+workerContext.register('noPromises', function() {
 
 }, false);
 
-w.register('myAsync', function(a1, w) {
-	w = arguments[arguments.length - 1];
+workerContext.register('myAsync', function(a1) {
+	var ic = workerContext.invocation();
 	setTimeout(function() {
-		w.done('async ran');
+		ic.done('async ran');
 	}, 15);
 }, true, true);
