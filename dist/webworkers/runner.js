@@ -34,7 +34,6 @@
 
 	// TODO: what about support for interleaving of a-sync tasks?
 	// We'll need task-ids.
-	// We also need a message type so we can take interrupt messages.
 	function receiveNewTask(e) {
 		var func = 
 			(new Function('ic', 'workerContext', 'return ' + e.data.func))(w, workerContext);
