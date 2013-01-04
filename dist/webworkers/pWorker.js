@@ -11,7 +11,7 @@ self.onmessage = function(e) {
 	self.onmessage = null;
 
 	self.w = {
-		register: function(name, func, promise, async) {
+		register: function(name, func, promise, async, interleave) {
 			if (promise !== false)
 				promise = true;
 
@@ -28,9 +28,10 @@ self.onmessage = function(e) {
 			});
 		},
 
-		ready: function() {
+		ready: function(err) {
 			self._internal._port.postMessage({
-					type: 'ready'
+					type: 'ready',
+					err: err
 			});
 		}
 	};
@@ -108,15 +109,18 @@ self.onmessage = function(e) {
 	};
 
 	var url = location.hash.substring(1);
-	importScripts(url);
 
-	if (typeof self.exports === 'object') {
-		for (var key in self.exports) {
-			if (self.exports.hasOwnProperty(key)) {
-				self.w.register(key, self.exports[key]);
+	try {
+		importScripts(url);
+		if (typeof self.exports === 'object') {
+			for (var key in self.exports) {
+				if (self.exports.hasOwnProperty(key)) {
+					self.w.register(key, self.exports[key]);
+				}
 			}
 		}
+		self.w.ready();
+	} catch(e) {
+		self.w.ready(e);
 	}
-
-	self.w.ready();
 }

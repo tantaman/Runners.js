@@ -57,7 +57,8 @@ function main(){
     var buffer = [
         ";(function(window) {",
         "'use strict';",
-        "var Runners = {};"
+        "var Runners = {};",
+        "var Workers = {};",
     ];
     var sources = [];
     for (var i = 0;i < args.include.length;i++){

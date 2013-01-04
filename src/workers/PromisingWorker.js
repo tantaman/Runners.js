@@ -10,6 +10,7 @@
 	this._promises = {};
 	this._readyCbs = [];
 	this.fns = {};
+	this.registrations = {};
 
 	this._regCbs = [];
 
@@ -21,6 +22,7 @@ PromisingWorker.prototype = {
 		switch (e.data.type) {
 			case 'registration':
 				var fn = this.fns[e.data.name] = this._createInvoker(e.data);
+				this.registrations[e.data.name] = e.data;
 				this._notifyRegCbs(fn, e.data);
 			break;
 			case 'completed':
@@ -34,7 +36,7 @@ PromisingWorker.prototype = {
 				promise._setState('rejected', e.data.result);
 			break;
 			case 'ready':
-				this._ready();
+				this._ready(e.data.err);
 			break;
 			case 'progress':
 				var promise = this._promises[e.data.id];
@@ -45,6 +47,8 @@ PromisingWorker.prototype = {
 		}
 	},
 
+	// TODO: allow a __promise to be supplied in the invocation context?
+	// Would be supplied in the case of AbstractPWorkerPool
 	_createInvoker: function(registration) {
 		var self = this;
 
@@ -57,7 +61,11 @@ PromisingWorker.prototype = {
 				};
 			var promise;
 			if (registration.promise) {
-				promise = self._promises[msg.id] = new Promise();
+				if (this.__promise) {
+					promise = self._promises[msg.id] = this.__promise;
+				} else {
+					promise = self._promises[msg.id] = new Promise();
+				}
 			}
 
 			self._channel.port1.postMessage(msg);
@@ -96,17 +104,18 @@ PromisingWorker.prototype = {
 
 	ready: function(cb) {
 		if (this._isReady) {
-			cb();
+			cb(this, this._err);
 		} else {
 			this._readyCbs.push(cb);
 		}
 	},
 
-	_ready: function() {
+	_ready: function(err) {
 		this._readyCbs.forEach(function(cb) {
-			cb();
-		});
+			cb(this, err);
+		}, this);
 		this._isReady = true;
+		this._err = err;
 		this._readyCbs = [];
 	}
 };

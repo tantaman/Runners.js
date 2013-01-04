@@ -15,9 +15,9 @@ var workerFactory = {
 		return new RunnerPool(queue, numWorkers);
 	},
 
-	newCachedRunnerPool: function() {
-		throw 'Not yet implemented';
-	},
+	// newCachedRunnerPool: function() {
+	// 	throw 'Not yet implemented';
+	// },
 
 	// Don't really need this
 	// We can accomplish the same things via:
@@ -56,7 +56,7 @@ var workerFactory = {
 		return new PromisingWorker(url);
 	},
 
-	// newFixedWorkerPool: function() {
+	// newFixedPWorkerPool: function() {
 
 	// }
 

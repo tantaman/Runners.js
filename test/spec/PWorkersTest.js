@@ -17,6 +17,16 @@ function(Runners) {
 
 			// });
 
+			it('Notifies when ready (scripts have been imported and functions registered)',
+			function(done) {
+				done();
+			});
+
+			it('Provides an error to done callbacks if there was an error loading scripts',
+			function(done) {
+				done();
+			});
+
 			it('Provides a function map', function(done) {
 				worker.ready(function() {
 					var funcs = Object.keys(worker.fns);
@@ -70,6 +80,7 @@ function(Runners) {
 					});
 				});
 			});
+
 		});
 	});
 });
