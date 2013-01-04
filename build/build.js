@@ -34,7 +34,7 @@ var spawn = require('child_process').spawn;
 function main(){
     "use strict";
     var parser = new argparse.ArgumentParser();
-    parser.addArgument(['--include'], {"action":'append', 'defaultValue':['core', 'runners', 'pworkers', 'footer']});
+    parser.addArgument(['--include'], {"action":'append', 'defaultValue':['header', 'core', 'runners', 'pworkers', 'footer']});
     parser.addArgument(['--externs'], {"action":'append', "defaultValue":['./externs/common.js']});
     parser.addArgument(['--minify'], {"action":'storeTrue', "defaultValue":false});
     parser.addArgument(['--output'], {"defaultValue":'../dist/Runners.js'});  
@@ -54,12 +54,7 @@ function main(){
 		sourcemap = sourcemapping = sourcemapargs = '';
 	}
     
-    var buffer = [
-        ";(function(window) {",
-        "'use strict';",
-        "var Runners = {};",
-        "var Workers = {};",
-    ];
+    var buffer = [];
     var sources = [];
     for (var i = 0;i < args.include.length;i++){
         
@@ -71,18 +66,20 @@ function main(){
     }
     console.log(buffer.length);
 
-    buffer.push("}(this));");
     var temp = buffer.join("\n");
     
+    var header = ";(function(window) {'use strict';var Runners = {};var Workers = {};";
+    var footer = "}(this));";
+
     if (!args.minify){
-        fs.writeFileSync(output,temp,'utf8');
+        fs.writeFileSync(output, header + temp + footer,'utf8');
     } else {
         var result = uglify.minify(sources, {
             outSourceMap: sourcemap
         });
         
         
-        fs.writeFileSync(output,result.code + sourcemapping,'utf8');
+        fs.writeFileSync(output, header + result.code + footer + sourcemapping,'utf8');
         
 
         if (args.sourcemaps){

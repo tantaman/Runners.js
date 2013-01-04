@@ -82,5 +82,9 @@ function(Runners) {
 			});
 
 		});
+
+		describe('PWorkerPool', function() {
+
+		});
 	});
 });
