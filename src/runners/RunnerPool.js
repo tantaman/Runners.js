@@ -111,28 +111,17 @@ var RunnerPool =
 			if (this._idleWorkers.size() > 0) {
 				worker = this._idleWorkers.remove().value;
 				var promise = this._dispatchToWorker(worker, task);
-				if (task.opts.interleave)
-					this._idleWorkers.add(worker);
 				result = promise;
 			} else if (this.numWorkers() + this._pendingCreations < this._maxWorkers) {
-				var promise = new Promise();
-				var self = this;
-
+				result = task.promise = new Promise();
 				this._queue.add(task);
-
 				this._createWorker(this._workerCreated);
-				result = promise;
 			} else {
 				result = task.promise = new Promise();
 				this._queue.add(task);
 			}
 
-			var self = this;
-			result.always(function() {
-				self._workerCompleted(worker, task.opts);
-			});
-
-			return result ? createPublicInterface(result) : undefined;
+			return createPublicInterface(result);
 		},
 
 		_workerCompleted: function(worker, registration) {
@@ -163,23 +152,30 @@ var RunnerPool =
 		// TODO: handle exceptions and cleanup of the pool on errors
 		_dispatchToWorker: function(worker, task) {
 			worker.runningNode = this._runningWorkers.add(worker);
+			var promise;
 			try {
 				if (task.type === 'pass_invoke') {
-					var promise = task.promise;
+					promise = task.promise;
 					delete task.promise;
-					return worker._submit(task, promise);
+					promise = worker._submit(task, promise);
 				} else {
 					var promise = task.fn.apply({
 						__promise: task.promise
 					}, task.args);
-
-					return promise;
 				}
+
+				var self = this;
+				promise.always(function() {
+					self._workerCompleted(worker, task.opts);
+				});
 			} catch (e) {
-				log.error('Problem dispatching work to worker.');
+				promise = 'Failed dispatching task to worker';
+				log.error(promise);
 				log.error(e.stack);
 				this._workerCompleted(worker);
 			}
+
+			return promise;
 		},
 
 		terminate: function() {

@@ -81,7 +81,7 @@ var Promise = (function() {
 						cb();
 					} catch (e) {
 						log.error('Error invoking a promise interrupt callback');
-						log.error(e);
+						log.error(e.stack);
 					}
 				});
 			} else {
@@ -137,7 +137,7 @@ var Promise = (function() {
 					fcb(this._result);
 				} catch (e) {
 					log.error('Error invoking a promise fail callback');
-					log.error(e);
+					log.error(e.stack);
 				}
 			}, this);
 		},
@@ -148,7 +148,7 @@ var Promise = (function() {
 					dcb(this._result);
 				} catch (e) {
 					log.error('Error invoking a promise done callback');
-					log.error(e);
+					log.error(e.stack);
 				}
 			}, this);
 		},
@@ -159,7 +159,7 @@ var Promise = (function() {
 					pcb(data);
 				} catch (e) {
 					log.error('Error invoking a promise progress callback');
-					log.error(e);
+					log.error(e.stack);
 				}
 			}, this);
 		}
