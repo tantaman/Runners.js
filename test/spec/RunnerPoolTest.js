@@ -132,7 +132,6 @@ function(Runners) {
 				}, {async:true});
 
 				promise.then(function(result) {
-					console.log('Interrupted');
 					expect(result).to.equal('we were interrupted!');
 					done();
 				}, failure);

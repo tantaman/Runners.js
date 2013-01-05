@@ -1,3 +1,28 @@
+var log = (function() {
+	var log = {};
+	if ('console' in self && 'error' in console) {
+		log.error = function (error) {
+			console.error(error);
+		};
+	} else {
+		log.error = function(error) {
+			alert(error);
+		};
+	}
+
+	if ('console' in self && 'log' in console) {
+		log.log = function(s) {
+			console.log(s);
+		};
+	} else {
+		log.log = function(s) {
+			alert(s);
+		};
+	}
+
+	return log;
+})();
+
 function identity(a) { return a; }
 
 function remove(arr, item) {

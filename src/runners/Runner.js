@@ -31,9 +31,16 @@ var Runner =
 		}
 	};
 
+	var workerErrorHandler = function(event) {
+		log.error("Possibly could not find runnerWebWorker.  Did you pass a {path: '...'} to Runners.config() that points to the Runners script location?");
+	};
+
 	function Runner(url) {
-		url = workerFactory._cfg.baseUrl + '/webworkers/runnerWebWorker.js' + ((url) ? '#' + url : '');
+		url = workerFactory._cfg.path + '/runnerWebWorker.js' + ((url) ? '#' + url : '');
+
 		this._worker = new Worker(url);
+		this._worker.onerror = workerErrorHandler;
+
 		var channel = new MessageChannel();
 
 		this._worker.postMessage('internalComs', [channel.port2]);

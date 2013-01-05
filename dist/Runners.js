@@ -22,6 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+var log = (function() {
+	var log = {};
+	if ('console' in self && 'error' in console) {
+		log.error = function (error) {
+			console.error(error);
+		};
+	} else {
+		log.error = function(error) {
+			alert(error);
+		};
+	}
+
+	if ('console' in self && 'log' in console) {
+		log.log = function(s) {
+			console.log(s);
+		};
+	} else {
+		log.log = function(s) {
+			alert(s);
+		};
+	}
+
+	return log;
+})();
+
 function identity(a) { return a; }
 
 function remove(arr, item) {
@@ -190,8 +215,8 @@ var Promise = (function() {
 					try {
 						cb();
 					} catch (e) {
-						console.log(e);
-						console.log(e.stack);
+						log.error('Error invoking a promise interrupt callback');
+						log.error(e);
 					}
 				});
 			} else {
@@ -246,7 +271,8 @@ var Promise = (function() {
 				try {
 					fcb(this._result);
 				} catch (e) {
-					console.log(e);
+					log.error('Error invoking a promise fail callback');
+					log.error(e);
 				}
 			}, this);
 		},
@@ -256,7 +282,8 @@ var Promise = (function() {
 				try {
 					dcb(this._result);
 				} catch (e) {
-					console.log(e);
+					log.error('Error invoking a promise done callback');
+					log.error(e);
 				}
 			}, this);
 		},
@@ -266,7 +293,8 @@ var Promise = (function() {
 				try {
 					pcb(data);
 				} catch (e) {
-					console.log(e);
+					log.error('Error invoking a promise progress callback');
+					log.error(e);
 				}
 			}, this);
 		}
@@ -413,13 +441,18 @@ var Queue = (function() {
 })();
 var workerFactory = {
 	_cfg: {
-		baseUrl: '.'
+		path: './'
 	},
 
 	config: function(cfg) {
 		for (var p in cfg) {
 			if (cfg.hasOwnProperty(p))
 				this._cfg[p] = cfg[p];
+		}
+
+		if (this._cfg.production) {
+			log.log = function() {};
+			log.error = function() {};
 		}
 	},
 
@@ -490,9 +523,16 @@ var Runner =
 		}
 	};
 
+	var workerErrorHandler = function(event) {
+		log.error("Possibly could not find runnerWebWorker.  Did you pass a {path: '...'} to Runners.config() that points to the Runners script location?");
+	};
+
 	function Runner(url) {
-		url = workerFactory._cfg.baseUrl + '/webworkers/runnerWebWorker.js' + ((url) ? '#' + url : '');
+		url = workerFactory._cfg.path + '/runnerWebWorker.js' + ((url) ? '#' + url : '');
+
 		this._worker = new Worker(url);
+		this._worker.onerror = workerErrorHandler;
+
 		var channel = new MessageChannel();
 
 		this._worker.postMessage('internalComs', [channel.port2]);
@@ -683,8 +723,8 @@ var RunnerPool =
 		_workerCreated: function(worker, err) {
 			--this._pendingCreations;
 			if (err) {
-				console.log(this._url + ": Error adding worker.")
-				console.log(err);
+				log.error(this._url + ": Error adding worker.")
+				log.error(err);
 			} else if (this._terminated) {
 				worker.terminate();
 			} else {
@@ -802,7 +842,8 @@ var RunnerPool =
 					return promise;
 				}
 			} catch (e) {
-				console.log(e.stack);
+				log.error('Problem dispatching work to worker.');
+				log.error(e.stack);
 				this._workerCompleted(worker);
 			}
 		},

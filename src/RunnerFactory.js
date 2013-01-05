@@ -1,12 +1,17 @@
 var workerFactory = {
 	_cfg: {
-		baseUrl: '.'
+		path: './'
 	},
 
 	config: function(cfg) {
 		for (var p in cfg) {
 			if (cfg.hasOwnProperty(p))
 				this._cfg[p] = cfg[p];
+		}
+
+		if (this._cfg.production) {
+			log.log = function() {};
+			log.error = function() {};
 		}
 	},
 

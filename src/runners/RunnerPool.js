@@ -57,8 +57,8 @@ var RunnerPool =
 		_workerCreated: function(worker, err) {
 			--this._pendingCreations;
 			if (err) {
-				console.log(this._url + ": Error adding worker.")
-				console.log(err);
+				log.error(this._url + ": Error adding worker.")
+				log.error(err);
 			} else if (this._terminated) {
 				worker.terminate();
 			} else {
@@ -176,7 +176,8 @@ var RunnerPool =
 					return promise;
 				}
 			} catch (e) {
-				console.log(e.stack);
+				log.error('Problem dispatching work to worker.');
+				log.error(e.stack);
 				this._workerCompleted(worker);
 			}
 		},

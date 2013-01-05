@@ -8,7 +8,7 @@ require.config({
 
 require(['Runners'], function(Runners) {
 	Runners.config({
-		baseUrl: '../dist'
+		path: '../dist/'
 	});
 
 	require(['../test/suite'], function() {

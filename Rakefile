@@ -10,7 +10,7 @@ end
 
 task :webworkers do
 	inclusions = "--include header --include webworkers"
-	build(inclusions, "../dist/webworkers/runnerWebWorker")
+	build(inclusions, "../dist/runnerWebWorker")
 end
 
 def build(inclusions, out)
