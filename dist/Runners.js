@@ -491,7 +491,7 @@ var Runner =
 	};
 
 	function Runner(url) {
-		url = workerFactory._cfg.baseUrl + '/webworkers/pWorker.js' + ((url) ? '#' + url : '');
+		url = workerFactory._cfg.baseUrl + '/webworkers/runnerWebWorker.js' + ((url) ? '#' + url : '');
 		this._worker = new Worker(url);
 		var channel = new MessageChannel();
 

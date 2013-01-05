@@ -1,4 +1,9 @@
 [
+	"../src/utils/Utils.js",
+	"../src/utils/Promise.js",
+	"../src/utils/LinkedList.js",
+	"../src/utils/Queue.js",
+	"../src/RunnerFactory.js",
 	"../src/runners/Runner.js",
 	"../src/runners/RunnerPool.js"
 ]

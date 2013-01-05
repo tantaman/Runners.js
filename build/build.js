@@ -34,7 +34,7 @@ var spawn = require('child_process').spawn;
 function main(){
     "use strict";
     var parser = new argparse.ArgumentParser();
-    parser.addArgument(['--include'], {"action":'append', 'defaultValue':['header', 'core', 'runners', 'footer']});
+    parser.addArgument(['--include'], {"action":'append', 'defaultValue':[]});
     parser.addArgument(['--externs'], {"action":'append', "defaultValue":['./externs/common.js']});
     parser.addArgument(['--minify'], {"action":'storeTrue', "defaultValue":false});
     parser.addArgument(['--output'], {"defaultValue":'../dist/Runners.js'});  
