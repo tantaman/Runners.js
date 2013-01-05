@@ -35,8 +35,8 @@
 	// TODO: what about support for interleaving of a-sync tasks?
 	// We'll need task-ids.
 	function receiveNewTask(e) {
-		var func = 
-			(new Function('ic', 'workerContext', 'return ' + e.data.func))(w, workerContext);
+		var fn = 
+			(new Function('ic', 'workerContext', 'return ' + e.data.fn))(w, workerContext);
 
 		e.data.opts = e.data.opts || {};
 
@@ -48,7 +48,7 @@
 			w._async = e.data.opts.async;
 			w._interleave = e.data.opts.interleave;
 			workerContext.invocation(w);
-			result = func.apply(e.data.context, e.data.args);
+			result = fn.apply(e.data.context, e.data.args);
 		} catch (e) {
 			result = e;
 			ex = true;

@@ -1,28 +1,3 @@
-;function normalizeArgs(args, context, func, opts) {
-	if (typeof args === 'function') {
-		func = args;
-		opts = context;
-		context = null;
-		args = null;
-	} else if (!Array.isArray(args) && typeof args === 'object') {
-		opts = func;
-		func = context;
-		context = args;
-		args = null;
-	} else if (Array.isArray(args) && typeof context === 'function') {
-		opts = func;
-		func = context;
-		context = null;
-	}
-
-	return {
-		args: args,
-		context: context,
-		func: func,
-		opts: opts
-	};
-}
-
 function AbstractRunnerPool(taskQueue, minWorkers, maxWorkers) {
 	this._queue = taskQueue;
 	this._minWorkers = minWorkers;
@@ -39,11 +14,11 @@ function AbstractRunnerPool(taskQueue, minWorkers, maxWorkers) {
 }
 
 AbstractRunnerPool.prototype = {
-	submit: function(args, context, func, opts) {
+	submit: function(args, context, fn, opts) {
 		if (this._terminated)
 			throw 'Pool has been terminated and can not accept new tasks.';
 
-		var normalizedArgs = normalizeArgs(args, context, func, opts);
+		var normalizedArgs = normalizeArgs(args, context, fn, opts);
 		var wrappedTask = new TaskWrapper(normalizedArgs);
 
 		if (this._idleWorkers.size() > 0) {
@@ -73,7 +48,7 @@ AbstractRunnerPool.prototype = {
 
 	_dispatchToWorker: function(worker, wrappedTask) {
 		// TODO: check function cache
-		wrappedTask.task.func = wrappedTask.task.func.toString();
+		wrappedTask.task.fn = wrappedTask.task.fn.toString();
 
 		worker.runningNode = this._runningWorkers.add(worker);
 		worker.addTask(wrappedTask);

@@ -1,7 +1,7 @@
 // TODO: Pull out a common base class or mixin for this and AbstractRunnerPool
 // to share.
 var regDoc = "register: function(name, func, [promise=true] [, async=false] [, interleave=false])";
-function AbstractPWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
+function PromisingWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
 	this._url = url;
 	this._queue = taskQueue;
 	this._minWorkers = minWorkers;
@@ -15,7 +15,7 @@ function AbstractPWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
 	}
 }
 
-AbstractPWorkerPool.prototype = {
+PromisingWorkerPool.prototype = {
 	_createWorker: function(cb) {
 		var worker = new PromisingWorker(this._url)
 		worker.ready(cb);
@@ -47,7 +47,12 @@ AbstractPWorkerPool.prototype = {
 		}
 	},
 
-	_submit: function(fn, registration, args) {
+	submit: function(args, context, fn, opts) {
+		var n = normalizeArgs(args, context, fn, opts);
+		return this._submit(n.fn, n.opts, n.args, n.context, true);
+	},
+
+	_submit: function(fn, registration, args, context, passInvoke) {
 		if (!registration.promise) {
 			throw this._url + ": All functions used in a PWorkerPool must return" +
 			" a promise.  Check your function registration. " + regDoc;
@@ -55,8 +60,10 @@ AbstractPWorkerPool.prototype = {
 
 		var task = {
 			fn: fn,
-			registration: registration,
-			args: args
+			opts: registration,
+			args: args,
+			context: context,
+			passInvoke: passInvoke
 		};
 
 		var result = null;
@@ -127,12 +134,19 @@ AbstractPWorkerPool.prototype = {
 	},
 
 	_dispatchToWorker: function(worker, task) {
-		worker.runningNode = this._runningWorkers.add(worker);
-		var promise = task.fn.apply({
-			__promise: task.promise
-		}, args);
+		if (task.passInvoke) {
+			delete task.passInvoke;
+			var promise = task.promise;
+			delete task.promise;
+			return worker._submit(task, promise);
+		} else {
+			worker.runningNode = this._runningWorkers.add(worker);
+			var promise = task.fn.apply({
+				__promise: task.promise
+			}, task.args);
 
-		return promise;
+			return promise;
+		}
 	},
 
 	terminate: function() {

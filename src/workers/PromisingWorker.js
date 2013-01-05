@@ -1,5 +1,6 @@
 ;function PromisingWorker(url) {
-	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/pWorker.js#' + url);
+	url = workerFactory._cfg.baseUrl + '/webworkers/pWorker.js' + ((url) ? '#' + url : '');
+	var w = new Worker(url);
 	var channel = new MessageChannel();
 
 	w.postMessage('internalComs', [channel.port2]);
@@ -13,6 +14,8 @@
 	this.registrations = {};
 
 	this._regCbs = [];
+
+	this.submit = this.submit.bind(this);
 
 	return this;
 }
@@ -55,7 +58,7 @@ PromisingWorker.prototype = {
 		return function() {
 			var msg = {
 					type: 'invoke',
-					func: registration.name,
+					fn: registration.name,
 					id: ++self._invokeId,
 					args: Array.prototype.slice.call(arguments, 0)
 				};
@@ -71,6 +74,28 @@ PromisingWorker.prototype = {
 			self._channel.port1.postMessage(msg);
 			return (promise) ? createPublicInterface(promise) : undefined;
 		};
+	},
+
+	submit: function(args, context, fn, opts) {
+		return this._submit(normalizeArgs(args, context, fn, opts));
+	},
+
+	_submit: function(msg, promise) {
+		console.log(msg);
+		msg.type = 'pass_invoke';
+		msg.id = ++this._invokeId;
+		msg.fn = msg.fn.toString();
+
+		if (msg.opts.promise) {
+			if (!promise) {
+				promise = this._promises[msg.id] = new Promise();
+			} else {
+				this._promises[msg.id] = promise;
+			}
+		}
+
+		this._channel.port1.postMessage(msg);
+		return (promise) ? createPublicInterface(promise) : undefined;
 	},
 
 	// Just bring in your EventEmitter?
@@ -96,9 +121,9 @@ PromisingWorker.prototype = {
 		}
 	},
 
-	_notifyRegCbs: function(func, registration) {
+	_notifyRegCbs: function(fn, registration) {
 		this._regCbs.forEach(function(cb) {
-			cb(func, registration);
+			cb(fn, registration);
 		});
 	},
 

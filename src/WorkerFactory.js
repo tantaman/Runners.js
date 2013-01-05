@@ -13,6 +13,27 @@ var workerFactory = {
 	newFixedRunnerPool: function(numWorkers, queueCap) {
 		var queue = new Queue(queueCap);
 		return new RunnerPool(queue, numWorkers);
+		//return this.newFixedPWorkerPool(numWorkers, queueCap);
+	},
+
+	newSingleRunnerPool: function() {
+		var queue = new Queue();
+		return new RunnerPool(queue, 1);
+	},
+
+	newPWorker: function(url) {
+		// promiseMessage?
+		return new PromisingWorker(url);
+	},
+
+	newFixedPWorkerPool: function(url, numWorkers, queueCap) {
+		if (typeof url === 'number') {
+			queueCap = numWorkers;
+			numWorkers = url;
+			url = undefined;
+		}
+
+		return new PromisingWorkerPool(url, new Queue(queueCap), numWorkers, numWorkers);
 	},
 
 	// newCachedRunnerPool: function() {
@@ -34,34 +55,4 @@ var workerFactory = {
 	// newScheduledWorkerPool: function(numWorkers) {
 	// 	throw 'Not yet implemented';
 	// },
-
-	newSingleRunnerPool: function() {
-		var queue = new Queue();
-		return new RunnerPool(queue, 1);
-	},
-
-	newPWorker: function(url) {
-		// Make a worker whose postMessage methods return promises?
-		// it is the user's worker...
-		// so we'll need to modify onMessage somehow so it returns
-		// something that can set the state of the promise.
-
-		// Maybe instead of overriding postMessage provide a new method:
-		// promiseMessage since promises are going to have to be cached
-		// and looked up by some id.  So if the other side never fulfills
-		// the promise it'll leak.
-
-		// Allow promiseMessage(msg, timeout)?
-		// to expire the promises?
-		return new PromisingWorker(url);
-	},
-
-	// newFixedPWorkerPool: function() {
-
-	// }
-
-	// TODO: PWorker pool?
-	// It would make sense to have one...
-	// load up the same script in multiple workers and farm out calls
-	// to available workers...
 };

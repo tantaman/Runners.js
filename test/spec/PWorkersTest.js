@@ -35,6 +35,16 @@ function(Runners) {
 				});
 			});
 
+			it('Allows submission of new functions', function(done) {
+				// No need to await ready since we are submitting a new function
+				worker.submit(function() {
+					return 'o snap';
+				}).then(function(result) {
+					expect(result).to.equal('o snap');
+					done();
+				});
+			});
+
 			it('Returns a promise when invoking a function from the func map', function(done) {
 				worker.ready(function() {
 					worker.fns.soren().then(function(result) {
@@ -84,7 +94,9 @@ function(Runners) {
 		});
 
 		describe('PWorkerPool', function() {
+			it('Does what the other guy does', function() {
 
+			});
 		});
 	});
 });

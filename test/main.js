@@ -1,8 +1,8 @@
 require.config({
 	baseUrl: '../dist',
 	paths: {
-		spec: '../test/spec',
-		Runners: 'Runners.min'
+		spec: '../test/spec'
+		//Runners: 'Runners.min'
 	}
 });
 

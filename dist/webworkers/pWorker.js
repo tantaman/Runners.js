@@ -4,19 +4,19 @@ self.onmessage = function(e) {
 	if (e.data === 'internalComs') {
 		self._internal = {
 			_port: e.ports[0],
-			funcs: {}
+			fns: {}
 		};
 	}
 
 	self.onmessage = null;
 
 	self.workerContext = {
-		register: function(name, func, promise, async, interleave) {
+		register: function(name, fn, promise, async, interleave) {
 			if (promise !== false)
 				promise = true;
 
-			self._internal.funcs[name] = {
-				func: func,
+			self._internal.fns[name] = {
+				fn: fn,
 				promise: promise,
 				async: async || false
 			};
@@ -45,9 +45,28 @@ self.onmessage = function(e) {
 	};
 
 	var ws = {};
+	var registrationDefaults = {
+		async: false,
+		promise: true,
+		interleave: false
+	};
 
-	function invoke(msg) {
-		var registration = self._internal.funcs[msg.func];
+	function compileFunction(fn, ic) {
+		return (new Function('ic', 'return ' + fn))(ic);
+	}
+
+	function extend(dest, src) {
+		for (var k in src) {
+			if (dest[k] === undefined)
+				dest[k] = src[k];
+			}
+
+		return dest;
+	}
+
+	function invoke(msg, compile) {
+		var registration = msg.opts || self._internal.fns[msg.fn];
+		extend(registration, registrationDefaults);
 
 		var w = {
 			done: function (result, err) {
@@ -86,7 +105,10 @@ self.onmessage = function(e) {
 		var result;
 		try {
 			workerContext.invocation(w);
-			result = registration.func.apply(msg.context, msg.args);
+			if (compile) {
+				registration.fn = compileFunction(msg.fn, w);
+			}
+			result = registration.fn.apply(msg.context, msg.args);
 		} catch (e) {
 			result = e;
 			ex = true;
@@ -103,6 +125,9 @@ self.onmessage = function(e) {
 		switch (e.data.type) {
 			case 'invoke':
 				invoke(e.data);
+			break;
+			case 'pass_invoke':
+				invoke(e.data, true);
 			break;
 			case 'interrupt':
 				ws[e.data.id].interrupted = true;

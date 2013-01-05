@@ -1,4 +1,4 @@
 [
 	"../src/workers/PromisingWorker.js",
-	"../src/workers/AbstractPWorkerPool.js"
+	"../src/workers/PromisingWorkerPool.js"
 ]

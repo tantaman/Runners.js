@@ -64,6 +64,50 @@ function createPublicInterface(object) {
 
 	return iface;
 }
+
+function extend(dest, src) {
+	for (var k in src) {
+		if (dest[k] === undefined)
+			dest[k] = src[k];
+	}
+
+	return dest;
+}
+
+var optsDefaults = {
+	promise: true,
+	async: false,
+	interleave: false
+};
+
+function normalizeArgs(args, context, fn, opts) {
+	if (typeof args === 'function') {
+		fn = args;
+		opts = context;
+		context = null;
+		args = null;
+	} else if (!Array.isArray(args) && typeof args === 'object') {
+		opts = fn;
+		fn = context;
+		context = args;
+		args = null;
+	} else if (Array.isArray(args) && typeof context === 'function') {
+		opts = fn;
+		fn = context;
+		context = null;
+	}
+
+	opts = opts || {};
+
+	extend(opts, optsDefaults);
+
+	return {
+		args: args,
+		context: context,
+		fn: fn,
+		opts: opts
+	};
+}
 function Promise(interruptListener) {
 	this._progressCbs = [];
 	this._doneCbs = [];
@@ -355,6 +399,27 @@ var workerFactory = {
 	newFixedRunnerPool: function(numWorkers, queueCap) {
 		var queue = new Queue(queueCap);
 		return new RunnerPool(queue, numWorkers);
+		//return this.newFixedPWorkerPool(numWorkers, queueCap);
+	},
+
+	newSingleRunnerPool: function() {
+		var queue = new Queue();
+		return new RunnerPool(queue, 1);
+	},
+
+	newPWorker: function(url) {
+		// promiseMessage?
+		return new PromisingWorker(url);
+	},
+
+	newFixedPWorkerPool: function(url, numWorkers, queueCap) {
+		if (typeof url === 'number') {
+			queueCap = numWorkers;
+			numWorkers = url;
+			url = undefined;
+		}
+
+		return new PromisingWorkerPool(url, new Queue(queueCap), numWorkers, numWorkers);
 	},
 
 	// newCachedRunnerPool: function() {
@@ -376,36 +441,6 @@ var workerFactory = {
 	// newScheduledWorkerPool: function(numWorkers) {
 	// 	throw 'Not yet implemented';
 	// },
-
-	newSingleRunnerPool: function() {
-		var queue = new Queue();
-		return new RunnerPool(queue, 1);
-	},
-
-	newPWorker: function(url) {
-		// Make a worker whose postMessage methods return promises?
-		// it is the user's worker...
-		// so we'll need to modify onMessage somehow so it returns
-		// something that can set the state of the promise.
-
-		// Maybe instead of overriding postMessage provide a new method:
-		// promiseMessage since promises are going to have to be cached
-		// and looked up by some id.  So if the other side never fulfills
-		// the promise it'll leak.
-
-		// Allow promiseMessage(msg, timeout)?
-		// to expire the promises?
-		return new PromisingWorker(url);
-	},
-
-	// newFixedPWorkerPool: function() {
-
-	// }
-
-	// TODO: PWorker pool?
-	// It would make sense to have one...
-	// load up the same script in multiple workers and farm out calls
-	// to available workers...
 };
 ;function WorkerWrapper(worker) {
 	this.worker = worker;
@@ -486,31 +521,6 @@ TaskWrapper.prototype = {
 		}, this);
 	}
 }
-;function normalizeArgs(args, context, func, opts) {
-	if (typeof args === 'function') {
-		func = args;
-		opts = context;
-		context = null;
-		args = null;
-	} else if (!Array.isArray(args) && typeof args === 'object') {
-		opts = func;
-		func = context;
-		context = args;
-		args = null;
-	} else if (Array.isArray(args) && typeof context === 'function') {
-		opts = func;
-		func = context;
-		context = null;
-	}
-
-	return {
-		args: args,
-		context: context,
-		func: func,
-		opts: opts
-	};
-}
-
 function AbstractRunnerPool(taskQueue, minWorkers, maxWorkers) {
 	this._queue = taskQueue;
 	this._minWorkers = minWorkers;
@@ -527,11 +537,11 @@ function AbstractRunnerPool(taskQueue, minWorkers, maxWorkers) {
 }
 
 AbstractRunnerPool.prototype = {
-	submit: function(args, context, func, opts) {
+	submit: function(args, context, fn, opts) {
 		if (this._terminated)
 			throw 'Pool has been terminated and can not accept new tasks.';
 
-		var normalizedArgs = normalizeArgs(args, context, func, opts);
+		var normalizedArgs = normalizeArgs(args, context, fn, opts);
 		var wrappedTask = new TaskWrapper(normalizedArgs);
 
 		if (this._idleWorkers.size() > 0) {
@@ -561,7 +571,7 @@ AbstractRunnerPool.prototype = {
 
 	_dispatchToWorker: function(worker, wrappedTask) {
 		// TODO: check function cache
-		wrappedTask.task.func = wrappedTask.task.func.toString();
+		wrappedTask.task.fn = wrappedTask.task.fn.toString();
 
 		worker.runningNode = this._runningWorkers.add(worker);
 		worker.addTask(wrappedTask);
@@ -628,7 +638,8 @@ proto._createActualWorker = function() {
 	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/runner.js');
 };
 ;function PromisingWorker(url) {
-	var w = new Worker(workerFactory._cfg.baseUrl + '/webworkers/pWorker.js#' + url);
+	url = workerFactory._cfg.baseUrl + '/webworkers/pWorker.js' + ((url) ? '#' + url : '');
+	var w = new Worker(url);
 	var channel = new MessageChannel();
 
 	w.postMessage('internalComs', [channel.port2]);
@@ -642,6 +653,8 @@ proto._createActualWorker = function() {
 	this.registrations = {};
 
 	this._regCbs = [];
+
+	this.submit = this.submit.bind(this);
 
 	return this;
 }
@@ -684,7 +697,7 @@ PromisingWorker.prototype = {
 		return function() {
 			var msg = {
 					type: 'invoke',
-					func: registration.name,
+					fn: registration.name,
 					id: ++self._invokeId,
 					args: Array.prototype.slice.call(arguments, 0)
 				};
@@ -700,6 +713,28 @@ PromisingWorker.prototype = {
 			self._channel.port1.postMessage(msg);
 			return (promise) ? createPublicInterface(promise) : undefined;
 		};
+	},
+
+	submit: function(args, context, fn, opts) {
+		return this._submit(normalizeArgs(args, context, fn, opts));
+	},
+
+	_submit: function(msg, promise) {
+		console.log(msg);
+		msg.type = 'pass_invoke';
+		msg.id = ++this._invokeId;
+		msg.fn = msg.fn.toString();
+
+		if (msg.opts.promise) {
+			if (!promise) {
+				promise = this._promises[msg.id] = new Promise();
+			} else {
+				this._promises[msg.id] = promise;
+			}
+		}
+
+		this._channel.port1.postMessage(msg);
+		return (promise) ? createPublicInterface(promise) : undefined;
 	},
 
 	// Just bring in your EventEmitter?
@@ -725,9 +760,9 @@ PromisingWorker.prototype = {
 		}
 	},
 
-	_notifyRegCbs: function(func, registration) {
+	_notifyRegCbs: function(fn, registration) {
 		this._regCbs.forEach(function(cb) {
-			cb(func, registration);
+			cb(fn, registration);
 		});
 	},
 
@@ -751,7 +786,7 @@ PromisingWorker.prototype = {
 // TODO: Pull out a common base class or mixin for this and AbstractRunnerPool
 // to share.
 var regDoc = "register: function(name, func, [promise=true] [, async=false] [, interleave=false])";
-function AbstractPWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
+function PromisingWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
 	this._url = url;
 	this._queue = taskQueue;
 	this._minWorkers = minWorkers;
@@ -765,7 +800,7 @@ function AbstractPWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
 	}
 }
 
-AbstractPWorkerPool.prototype = {
+PromisingWorkerPool.prototype = {
 	_createWorker: function(cb) {
 		var worker = new PromisingWorker(this._url)
 		worker.ready(cb);
@@ -797,7 +832,12 @@ AbstractPWorkerPool.prototype = {
 		}
 	},
 
-	_submit: function(fn, registration, args) {
+	submit: function(args, context, fn, opts) {
+		var n = normalizeArgs(args, context, fn, opts);
+		return this._submit(n.fn, n.opts, n.args, n.context, true);
+	},
+
+	_submit: function(fn, registration, args, context, passInvoke) {
 		if (!registration.promise) {
 			throw this._url + ": All functions used in a PWorkerPool must return" +
 			" a promise.  Check your function registration. " + regDoc;
@@ -805,8 +845,10 @@ AbstractPWorkerPool.prototype = {
 
 		var task = {
 			fn: fn,
-			registration: registration,
-			args: args
+			opts: registration,
+			args: args,
+			context: context,
+			passInvoke: passInvoke
 		};
 
 		var result = null;
@@ -877,12 +919,19 @@ AbstractPWorkerPool.prototype = {
 	},
 
 	_dispatchToWorker: function(worker, task) {
-		worker.runningNode = this._runningWorkers.add(worker);
-		var promise = task.fn.apply({
-			__promise: task.promise
-		}, args);
+		if (task.passInvoke) {
+			delete task.passInvoke;
+			var promise = task.promise;
+			delete task.promise;
+			return worker._submit(task, promise);
+		} else {
+			worker.runningNode = this._runningWorkers.add(worker);
+			var promise = task.fn.apply({
+				__promise: task.promise
+			}, task.args);
 
-		return promise;
+			return promise;
+		}
 	},
 
 	terminate: function() {

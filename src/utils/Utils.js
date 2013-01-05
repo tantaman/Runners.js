@@ -40,3 +40,47 @@ function createPublicInterface(object) {
 
 	return iface;
 }
+
+function extend(dest, src) {
+	for (var k in src) {
+		if (dest[k] === undefined)
+			dest[k] = src[k];
+	}
+
+	return dest;
+}
+
+var optsDefaults = {
+	promise: true,
+	async: false,
+	interleave: false
+};
+
+function normalizeArgs(args, context, fn, opts) {
+	if (typeof args === 'function') {
+		fn = args;
+		opts = context;
+		context = null;
+		args = null;
+	} else if (!Array.isArray(args) && typeof args === 'object') {
+		opts = fn;
+		fn = context;
+		context = args;
+		args = null;
+	} else if (Array.isArray(args) && typeof context === 'function') {
+		opts = fn;
+		fn = context;
+		context = null;
+	}
+
+	opts = opts || {};
+
+	extend(opts, optsDefaults);
+
+	return {
+		args: args,
+		context: context,
+		fn: fn,
+		opts: opts
+	};
+}
