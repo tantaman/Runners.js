@@ -98,7 +98,7 @@ function(Runners) {
 						setTimeout(report, 20);
 					}
 					setTimeout(report, 0);
-				}).progress(function() {
+				}, {async: true}).progress(function() {
 					progCnt += 1;
 				});
 
@@ -132,6 +132,7 @@ function(Runners) {
 				}, {async:true});
 
 				promise.then(function(result) {
+					console.log('Interrupted');
 					expect(result).to.equal('we were interrupted!');
 					done();
 				}, failure);

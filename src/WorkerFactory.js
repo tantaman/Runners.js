@@ -13,7 +13,7 @@ var workerFactory = {
 	newFixedRunnerPool: function(numWorkers, queueCap) {
 		var queue = new Queue(queueCap);
 		return new RunnerPool(queue, numWorkers);
-		//return this.newFixedPWorkerPool(numWorkers, queueCap);
+		// return this.newFixedPWorkerPool(numWorkers, queueCap);
 	},
 
 	newSingleRunnerPool: function() {

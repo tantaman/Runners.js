@@ -45,6 +45,7 @@ self.onmessage = function(e) {
 	};
 
 	var ws = {};
+	self.__wsdbg = ws;
 	var registrationDefaults = {
 		async: false,
 		promise: true,

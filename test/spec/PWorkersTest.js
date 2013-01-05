@@ -94,9 +94,54 @@ function(Runners) {
 		});
 
 		describe('PWorkerPool', function() {
-			it('Does what the other guy does', function() {
+			var pool = Runners.newFixedPWorkerPool(2);
+			// it('Allows basic submission of new funcs', function(done) {
+			// 	pool.submit(function() {
+			// 		return 'pooled';
+			// 	}).then(function(result) {
+			// 		expect(result).to.equal('pooled');
+			// 		done();
+			// 	});
+			// });
 
+			// it('Allows submission of new async funcs', function(done) {
+			// 	pool.submit(function() {
+			// 		setTimeout(function() {
+			// 			ic.progress();
+			// 			ic.done('done');
+			// 		}, 30);
+			// 	}, {async: true}).then(function(result) {
+			// 		expect(result).to.equal('done');
+			// 		done();
+			// 	});
+			// });
+
+			it('Allows interrupts of a=synchronous tasks', function(done) {
+				pool.ready(
+				function() {
+					var promise = pool.submit(function() {
+						function beBusy() {
+							if (!ic.interrupted)
+								setTimeout(beBusy, 5);
+							else
+								ic.done('we were interrupted!');
+						}
+
+						setTimeout(beBusy, 5);
+					}, {async: true});
+
+					promise.then(function(result) {
+						expect(result).to.equal('we were interrupted!');
+						done();
+					}, function(err) {
+						console.log('err');
+						console.log(err);
+					});
+
+					promise.interrupt();
+				});
 			});
+
 		});
 	});
 });

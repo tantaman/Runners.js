@@ -112,7 +112,10 @@ function Promise(interruptListener) {
 	this._progressCbs = [];
 	this._doneCbs = [];
 	this._failCbs = [];
-	this._interruptListener = interruptListener;
+	this._interruptCbs = [];
+
+	if (interruptListener)
+		this._interruptCbs.push(interruptListener);
 
 	this._doneFilter = identity;
 	this._failFilter = identity;
@@ -180,9 +183,19 @@ Promise.prototype = {
 		return this;
 	},
 
-	interrupt: function() {
-		if (this._interruptListener)
-			this._interruptListener();
+	interrupt: function(cb) {
+		if (!cb) {
+			this._interruptCbs.forEach(function(cb) {
+				try {
+					cb();
+				} catch (e) {
+					console.log(e);
+					console.log(e.stack);
+				}
+			});
+		} else {
+			this._interruptCbs = combineArgs(this._interruptCbs, arguments);
+		}
 
 		return this;
 	},
@@ -399,7 +412,7 @@ var workerFactory = {
 	newFixedRunnerPool: function(numWorkers, queueCap) {
 		var queue = new Queue(queueCap);
 		return new RunnerPool(queue, numWorkers);
-		//return this.newFixedPWorkerPool(numWorkers, queueCap);
+		// return this.newFixedPWorkerPool(numWorkers, queueCap);
 	},
 
 	newSingleRunnerPool: function() {
@@ -547,7 +560,7 @@ AbstractRunnerPool.prototype = {
 		if (this._idleWorkers.size() > 0) {
 			var worker = this._idleWorkers.remove().value;
 			this._dispatchToWorker(worker, wrappedTask);
-		} else if (this._runningWorkers.size() < this._maxWorkers) {
+		} else if (this.numWorkers() < this._maxWorkers) {
 			var worker = this._createWorker();
 			this._dispatchToWorker(worker, wrappedTask);
 		} else {
@@ -637,12 +650,15 @@ var proto = RunnerPool.prototype = Object.create(AbstractRunnerPool.prototype);
 proto._createActualWorker = function() {
 	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/runner.js');
 };
+// TODO: exception handling
+// to catch failures in workers and remove their promises.
+
 ;function PromisingWorker(url) {
 	url = workerFactory._cfg.baseUrl + '/webworkers/pWorker.js' + ((url) ? '#' + url : '');
-	var w = new Worker(url);
+	this._worker = new Worker(url);
 	var channel = new MessageChannel();
 
-	w.postMessage('internalComs', [channel.port2]);
+	this._worker.postMessage('internalComs', [channel.port2]);
 
 	channel.port1.onmessage = this._messageReceived.bind(this);
 	this._channel = channel;
@@ -660,6 +676,15 @@ proto._createActualWorker = function() {
 }
 
 PromisingWorker.prototype = {
+	terminate: function() {
+		this._promises = {};
+		this._readyCbs = [];
+		this._fns = {};
+		this.registrations = {};
+		this._regCbs = [];
+		this._worker.terminate();
+	},
+
 	_messageReceived: function(e) {
 		switch (e.data.type) {
 			case 'registration':
@@ -698,19 +723,11 @@ PromisingWorker.prototype = {
 			var msg = {
 					type: 'invoke',
 					fn: registration.name,
-					id: ++self._invokeId,
 					args: Array.prototype.slice.call(arguments, 0)
 				};
-			var promise;
-			if (registration.promise) {
-				if (this.__promise) {
-					promise = self._promises[msg.id] = this.__promise;
-				} else {
-					promise = self._promises[msg.id] = new Promise();
-				}
-			}
 
-			self._channel.port1.postMessage(msg);
+			var promise = self._submit(msg, this.__promise, registration.promise);
+
 			return (promise) ? createPublicInterface(promise) : undefined;
 		};
 	},
@@ -719,22 +736,32 @@ PromisingWorker.prototype = {
 		return this._submit(normalizeArgs(args, context, fn, opts));
 	},
 
-	_submit: function(msg, promise) {
-		console.log(msg);
-		msg.type = 'pass_invoke';
-		msg.id = ++this._invokeId;
-		msg.fn = msg.fn.toString();
+	_submit: function(msg, promise, makePromise) {
+		msg.type = msg.type || 'pass_invoke';
+		msg.id = (this._invokeId += 1);
+		if (typeof msg.fn === 'function')
+			msg.fn = msg.fn.toString();
 
-		if (msg.opts.promise) {
-			if (!promise) {
+		if (makePromise || (msg.opts && msg.opts.promise)) {
+			if (promise == null) {
 				promise = this._promises[msg.id] = new Promise();
 			} else {
 				this._promises[msg.id] = promise;
 			}
 		}
 
+		if (promise) {
+			var self = this;
+			promise.interrupt(function() {
+				self._channel.port1.postMessage({
+					type: 'interrupt',
+					id: msg.id
+				});
+			});
+		}
+
 		this._channel.port1.postMessage(msg);
-		return (promise) ? createPublicInterface(promise) : undefined;
+		return promise;
 	},
 
 	// Just bring in your EventEmitter?
@@ -793,10 +820,22 @@ function PromisingWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
 	this._maxWorkers = maxWorkers;
 	this._runningWorkers = new LinkedList();
 	this._idleWorkers = new LinkedList();
+	this._readyCbs = [];
 
 	this._workerCreated = this._workerCreated.bind(this);
+
 	for (var i = 0; i < minWorkers; ++i) {
-		var worker = this._createWorker(this._workerCreated);
+		var worker = this._createWorker(workerReady);
+	}
+
+	var readyWorkers = 0;
+	var self = this;
+	function workerReady(worker, err) {
+		self._workerCreated(worker, err);
+		++readyWorkers;
+		if (readyWorkers == minWorkers) {
+			self._ready();
+		}
 	}
 }
 
@@ -804,6 +843,23 @@ PromisingWorkerPool.prototype = {
 	_createWorker: function(cb) {
 		var worker = new PromisingWorker(this._url)
 		worker.ready(cb);
+		return worker;
+	},
+
+	_ready: function() {
+		this._isReady = true;
+		this._readyCbs.forEach(function(cb) {
+			cb();
+		});
+		this._readyCbs = [];
+	},
+
+	ready: function(cb) {
+		if (this._isReady) {
+			cb();
+		} else {
+			this._readyCbs = combineArgs(this._readyCbs, arguments);
+		}
 	},
 
 	_workerCreated: function(worker, err) {
@@ -826,12 +882,13 @@ PromisingWorkerPool.prototype = {
 			var registration = worker.registrations[fname];
 			this.fns[fname] = (function(registration, fname) {
 				return function() {
-					self._submit(worker.fns[fname], registration, arguments);
+					return self._submit(worker.fns[fname], registration, arguments);
 				};
 			})(registration, fname);
 		}
 	},
 
+	// TODO: allow stuff to be submitted even before we are ready for it
 	submit: function(args, context, fn, opts) {
 		var n = normalizeArgs(args, context, fn, opts);
 		return this._submit(n.fn, n.opts, n.args, n.context, true);
@@ -859,9 +916,14 @@ PromisingWorkerPool.prototype = {
 			if (registration.interleave)
 				this._idleWorkers.add(worker);
 			result = promise;
-		} else if (this._runningWorkers.size() < this._maxWorkers) {
+		} else if (this.numWorkers() < this._maxWorkers) {
 			var promise = new Promise();
 			var self = this;
+			// TODO: this is problematic.
+			// We can have multiple creations before our guys are ready
+			// and easily blow out the worker limit.
+			// We just need to make PromisingWorker smarter and have a
+			// 'submit on ready' function
 			this._createWorker(function(newWorker, err) {
 				worker = newWorker;
 				if (err) {
@@ -870,8 +932,8 @@ PromisingWorkerPool.prototype = {
 				} else {
 					task.promise = promise;
 					self._dispatchToWorker(worker, task);
-					if (registration.interleave)
-						self._idleWorkers.add(worker);
+					// if (registration.interleave)
+						// self._idleWorkers.add(worker);
 				}
 			});
 			result = promise;
@@ -880,16 +942,16 @@ PromisingWorkerPool.prototype = {
 				throw 'Task queue has reached its limit';
 			}
 
-			task.promise = new Promise();
+			result = task.promise = new Promise();
 			this._queue.add(task);
-
-			result = task.promise;
 		}
 
 		var self = this;
 		result.always(function() {
 			self._workerCompleted(worker, registration);
 		});
+
+		return result ? createPublicInterface(result) : undefined;
 	},
 
 	_workerCompleted: function(worker, registration) {
@@ -918,14 +980,15 @@ PromisingWorkerPool.prototype = {
 		return this._queue.size();
 	},
 
+	// TODO: handle exceptions and cleanup of the pool on errors
 	_dispatchToWorker: function(worker, task) {
+		worker.runningNode = this._runningWorkers.add(worker);
 		if (task.passInvoke) {
 			delete task.passInvoke;
 			var promise = task.promise;
 			delete task.promise;
 			return worker._submit(task, promise);
 		} else {
-			worker.runningNode = this._runningWorkers.add(worker);
 			var promise = task.fn.apply({
 				__promise: task.promise
 			}, task.args);

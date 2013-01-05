@@ -2,7 +2,10 @@ function Promise(interruptListener) {
 	this._progressCbs = [];
 	this._doneCbs = [];
 	this._failCbs = [];
-	this._interruptListener = interruptListener;
+	this._interruptCbs = [];
+
+	if (interruptListener)
+		this._interruptCbs.push(interruptListener);
 
 	this._doneFilter = identity;
 	this._failFilter = identity;
@@ -70,9 +73,19 @@ Promise.prototype = {
 		return this;
 	},
 
-	interrupt: function() {
-		if (this._interruptListener)
-			this._interruptListener();
+	interrupt: function(cb) {
+		if (!cb) {
+			this._interruptCbs.forEach(function(cb) {
+				try {
+					cb();
+				} catch (e) {
+					console.log(e);
+					console.log(e.stack);
+				}
+			});
+		} else {
+			this._interruptCbs = combineArgs(this._interruptCbs, arguments);
+		}
 
 		return this;
 	},

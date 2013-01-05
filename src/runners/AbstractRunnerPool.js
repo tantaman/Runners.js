@@ -24,7 +24,7 @@ AbstractRunnerPool.prototype = {
 		if (this._idleWorkers.size() > 0) {
 			var worker = this._idleWorkers.remove().value;
 			this._dispatchToWorker(worker, wrappedTask);
-		} else if (this._runningWorkers.size() < this._maxWorkers) {
+		} else if (this.numWorkers() < this._maxWorkers) {
 			var worker = this._createWorker();
 			this._dispatchToWorker(worker, wrappedTask);
 		} else {

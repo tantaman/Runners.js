@@ -1,9 +1,12 @@
+// TODO: exception handling
+// to catch failures in workers and remove their promises.
+
 ;function PromisingWorker(url) {
 	url = workerFactory._cfg.baseUrl + '/webworkers/pWorker.js' + ((url) ? '#' + url : '');
-	var w = new Worker(url);
+	this._worker = new Worker(url);
 	var channel = new MessageChannel();
 
-	w.postMessage('internalComs', [channel.port2]);
+	this._worker.postMessage('internalComs', [channel.port2]);
 
 	channel.port1.onmessage = this._messageReceived.bind(this);
 	this._channel = channel;
@@ -21,6 +24,15 @@
 }
 
 PromisingWorker.prototype = {
+	terminate: function() {
+		this._promises = {};
+		this._readyCbs = [];
+		this._fns = {};
+		this.registrations = {};
+		this._regCbs = [];
+		this._worker.terminate();
+	},
+
 	_messageReceived: function(e) {
 		switch (e.data.type) {
 			case 'registration':
@@ -59,19 +71,11 @@ PromisingWorker.prototype = {
 			var msg = {
 					type: 'invoke',
 					fn: registration.name,
-					id: ++self._invokeId,
 					args: Array.prototype.slice.call(arguments, 0)
 				};
-			var promise;
-			if (registration.promise) {
-				if (this.__promise) {
-					promise = self._promises[msg.id] = this.__promise;
-				} else {
-					promise = self._promises[msg.id] = new Promise();
-				}
-			}
 
-			self._channel.port1.postMessage(msg);
+			var promise = self._submit(msg, this.__promise, registration.promise);
+
 			return (promise) ? createPublicInterface(promise) : undefined;
 		};
 	},
@@ -80,22 +84,32 @@ PromisingWorker.prototype = {
 		return this._submit(normalizeArgs(args, context, fn, opts));
 	},
 
-	_submit: function(msg, promise) {
-		console.log(msg);
-		msg.type = 'pass_invoke';
-		msg.id = ++this._invokeId;
-		msg.fn = msg.fn.toString();
+	_submit: function(msg, promise, makePromise) {
+		msg.type = msg.type || 'pass_invoke';
+		msg.id = (this._invokeId += 1);
+		if (typeof msg.fn === 'function')
+			msg.fn = msg.fn.toString();
 
-		if (msg.opts.promise) {
-			if (!promise) {
+		if (makePromise || (msg.opts && msg.opts.promise)) {
+			if (promise == null) {
 				promise = this._promises[msg.id] = new Promise();
 			} else {
 				this._promises[msg.id] = promise;
 			}
 		}
 
+		if (promise) {
+			var self = this;
+			promise.interrupt(function() {
+				self._channel.port1.postMessage({
+					type: 'interrupt',
+					id: msg.id
+				});
+			});
+		}
+
 		this._channel.port1.postMessage(msg);
-		return (promise) ? createPublicInterface(promise) : undefined;
+		return promise;
 	},
 
 	// Just bring in your EventEmitter?
