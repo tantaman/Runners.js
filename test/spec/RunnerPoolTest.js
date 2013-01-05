@@ -65,7 +65,7 @@ function(Runners) {
 					var task = function() {
 						setTimeout(function() {
 							ic.done();
-						}, 50);
+						}, 25);
 					};
 
 					var opts = {async:true};

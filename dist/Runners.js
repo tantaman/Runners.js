@@ -496,28 +496,33 @@ var Runner =
 (function() {
 	var messageHandlers = {
 		registration: function(e) {
+			if (this._terminated) return;
 			var fn = this.fns[e.data.name] = this._createInvoker(e.data);
 			this.registrations[e.data.name] = e.data;
 			this._notifyRegCbs(fn, e.data);
 		},
 
 		completed: function(e) {
+			if (this._terminated) return;
 			var promise = this._promises[e.data.id];
 			delete this._promises[e.data.id];
 			promise._setState('resolved', e.data.result);
 		},
 
 		failed: function(e) {
+			if (this._terminated) return;
 			var promise = this._promises[e.data.id];
 			delete this._promises[e.data.id];
 			promise._setState('rejected', e.data.result);
 		},
 
 		ready: function(e) {
+			if (this._terminated) return;
 			this._ready(e.data.err);
 		},
 
 		progress: function(e) {
+			if (this._terminated) return;
 			var promise = this._promises[e.data.id];
 			promise._progressMade(e.data.data);
 		}
@@ -554,6 +559,7 @@ var Runner =
 
 	Runner.prototype = {
 		terminate: function() {
+			this._terminated = true;
 			this._promises = {};
 			this._readyCbs = [];
 			this._fns = {};
@@ -589,6 +595,9 @@ var Runner =
 		},
 
 		_submit: function(msg, promise, makePromise) {
+			if (this._terminated)
+				throw "Can't submit to a terminated worker";
+
 			msg.id = (this._invokeId += 1);
 			if (typeof msg.fn === 'function')
 				msg.fn = msg.fn.toString();
