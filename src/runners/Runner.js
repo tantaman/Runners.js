@@ -1,6 +1,6 @@
 // TODO: exception handling
 // to catch failures in workers and remove their promises.
-var PromisingWorker = 
+var Runner = 
 (function() {
 	var messageHandlers = {
 		registration: function(e) {
@@ -31,7 +31,7 @@ var PromisingWorker =
 		}
 	};
 
-	function PromisingWorker(url) {
+	function Runner(url) {
 		url = workerFactory._cfg.baseUrl + '/webworkers/pWorker.js' + ((url) ? '#' + url : '');
 		this._worker = new Worker(url);
 		var channel = new MessageChannel();
@@ -53,7 +53,7 @@ var PromisingWorker =
 		return this;
 	}
 
-	PromisingWorker.prototype = {
+	Runner.prototype = {
 		terminate: function() {
 			this._promises = {};
 			this._readyCbs = [];
@@ -163,5 +163,5 @@ var PromisingWorker =
 		}
 	};
 
-	return PromisingWorker;
+	return Runner;
 })();

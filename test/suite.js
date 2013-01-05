@@ -1,6 +1,6 @@
 define([
-// 'spec/RunnersTest',
-'spec/PWorkersTest'
+'spec/RunnerTest',
+'spec/RunnerPoolTest'
 ], function() {
   'use strict';
   var runner = mocha.run();

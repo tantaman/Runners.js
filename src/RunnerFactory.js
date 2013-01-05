@@ -10,30 +10,18 @@ var workerFactory = {
 		}
 	},
 
-	newFixedRunnerPool: function(numWorkers, queueCap) {
-		var queue = new Queue(queueCap);
-		return new RunnerPool(queue, numWorkers);
-		// return this.newFixedPWorkerPool(numWorkers, queueCap);
-	},
-
-	newSingleRunnerPool: function() {
-		var queue = new Queue();
-		return new RunnerPool(queue, 1);
-	},
-
-	newPWorker: function(url) {
-		// promiseMessage?
-		return new PromisingWorker(url);
-	},
-
-	newFixedPWorkerPool: function(url, numWorkers, queueCap) {
+	newFixedRunnerPool: function(url, numWorkers, queueCap) {
 		if (typeof url === 'number') {
 			queueCap = numWorkers;
 			numWorkers = url;
 			url = undefined;
 		}
 
-		return new PromisingWorkerPool(url, new Queue(queueCap), numWorkers, numWorkers);
+		return new RunnerPool(url, new Queue(queueCap), numWorkers, numWorkers);
+	},
+
+	newRunner: function(url) {
+		return new Runner(url);
 	},
 
 	// newCachedRunnerPool: function() {

@@ -3,5 +3,5 @@
 	"../src/utils/Promise.js",
 	"../src/utils/LinkedList.js",
 	"../src/utils/Queue.js",
-	"../src/WorkerFactory.js"
+	"../src/RunnerFactory.js"
 ]

@@ -423,30 +423,18 @@ var workerFactory = {
 		}
 	},
 
-	newFixedRunnerPool: function(numWorkers, queueCap) {
-		var queue = new Queue(queueCap);
-		return new RunnerPool(queue, numWorkers);
-		// return this.newFixedPWorkerPool(numWorkers, queueCap);
-	},
-
-	newSingleRunnerPool: function() {
-		var queue = new Queue();
-		return new RunnerPool(queue, 1);
-	},
-
-	newPWorker: function(url) {
-		// promiseMessage?
-		return new PromisingWorker(url);
-	},
-
-	newFixedPWorkerPool: function(url, numWorkers, queueCap) {
+	newFixedRunnerPool: function(url, numWorkers, queueCap) {
 		if (typeof url === 'number') {
 			queueCap = numWorkers;
 			numWorkers = url;
 			url = undefined;
 		}
 
-		return new PromisingWorkerPool(url, new Queue(queueCap), numWorkers, numWorkers);
+		return new RunnerPool(url, new Queue(queueCap), numWorkers, numWorkers);
+	},
+
+	newRunner: function(url) {
+		return new Runner(url);
 	},
 
 	// newCachedRunnerPool: function() {
@@ -469,204 +457,9 @@ var workerFactory = {
 	// 	throw 'Not yet implemented';
 	// },
 };
-;function WorkerWrapper(worker) {
-	this.worker = worker;
-}
-
-WorkerWrapper.prototype = {
-	postMessage: function(m) {
-		this.worker.postMessage(m);
-	},
-
-	onMessage: function(handler) {
-		// TODO: addEventListener
-		this.worker.onmessage = handler;
-	},
-
-	terminate: function() {
-		this.worker.terminate();
-	},
-
-	addTask: function(task) {
-		this.currentTask = task;
-		var self = this;
-		// TODO: will need to bind interrupt to a specific task at some point.
-		// If we are going to allow interleaving of async tasks within a worker.
-		task.onInterruptRequest(function() {
-			self.postMessage({
-				type: 'interrupt'
-			});
-		});
-	},
-
-	// TODO: if we allow multiple tasks on one worker
-	// (e.g., a-sync tasks) then
-	// currentTask will need to be a map
-	// of task-id to task.
-	_workCompleted: function(data) {
-		var state;
-		if (data.type === 'failed') {
-			state = 'rejected';
-		} else {
-			state = 'resolved';
-		}
-
-		this.currentTask._setState(state, data.result);
-	},
-
-	_progressMade: function(data) {
-		this.currentTask._progressMade(data);
-	}
-};
-;function TaskWrapper(task) {
-	this.task = task;
-	this._promise = new Promise(this._interruptRequested.bind(this));
-	this._publicPromise = createPublicInterface(this._promise);
-	this._interruptRequestListeners = [];
-}
-
-TaskWrapper.prototype = {
-	promise: function() {
-		return this._publicPromise;
-	},
-
-	onInterruptRequest: function(cb) {
-		this._interruptRequestListeners.push(cb);
-	},
-
-	_setState: function(state, result) {
-		this._promise._setState(state, result);
-	},
-
-	_progressMade: function(data) {
-		this._promise._progressMade(data);
-	},
-
-	_interruptRequested: function() {
-		this._interruptRequestListeners.forEach(function(cb) {
-			cb();
-		}, this);
-	}
-}
-function AbstractRunnerPool(taskQueue, minWorkers, maxWorkers) {
-	this._queue = taskQueue;
-	this._minWorkers = minWorkers;
-	this._maxWorkers = maxWorkers;
-	this._runningWorkers = new LinkedList();
-	this._idleWorkers = new LinkedList();
-
-	this._receiveWorkerMessage = this._receiveWorkerMessage.bind(this);
-
-	for (var i = 0; i < minWorkers; ++i) {
-		var worker = this._createWorker();
-		this._idleWorkers.add(worker);
-	}
-}
-
-AbstractRunnerPool.prototype = {
-	submit: function(args, context, fn, opts) {
-		if (this._terminated)
-			throw 'Pool has been terminated and can not accept new tasks.';
-
-		var normalizedArgs = normalizeArgs(args, context, fn, opts);
-		var wrappedTask = new TaskWrapper(normalizedArgs);
-
-		if (this._idleWorkers.size() > 0) {
-			var worker = this._idleWorkers.remove().value;
-			this._dispatchToWorker(worker, wrappedTask);
-		} else if (this.numWorkers() < this._maxWorkers) {
-			var worker = this._createWorker();
-			this._dispatchToWorker(worker, wrappedTask);
-		} else {
-			if (this._queue.full()) {
-				throw 'Task queue has reached its limit';
-			}
-
-			this._queue.add(wrappedTask);
-		}
-
-		return wrappedTask.promise();
-	},
-
-	numWorkers: function() {
-		return this._idleWorkers.size() + this._runningWorkers.size();
-	},
-
-	queueSize: function() {
-		return this._queue.size();
-	},
-
-	_dispatchToWorker: function(worker, wrappedTask) {
-		// TODO: check function cache
-		wrappedTask.task.fn = wrappedTask.task.fn.toString();
-
-		worker.runningNode = this._runningWorkers.add(worker);
-		worker.addTask(wrappedTask);
-		worker.postMessage({type: 'task', data: wrappedTask.task});
-	},
-
-	_createWorker: function() {
-		var worker = new WorkerWrapper(this._createActualWorker());
-		var self = this;
-		worker.onMessage(function(e) {
-			self._receiveWorkerMessage(worker, e);
-		});
-
-		return worker;
-	},
-
-	terminate: function() {
-		this._queue.clear();
-		this._runningWorkers.forEach(function(worker) {
-			worker.terminate();
-		}, this);
-
-		this._idleWorkers.forEach(function(worker) {
-			worker.terminate();
-		}, this);
-
-		this._runningWorkers.clear();
-		this._idleWorkers.clear();
-		this._terminated = true;
-	},
-
-	_receiveWorkerMessage: function(worker, e) {
-		switch (e.data.type) {
-			case 'completed':
-			case 'failed':
-				try {
-					worker._workCompleted(e.data);
-				} catch (e) {
-					console.log(e);
-				}
-
-				if (this._queue.size() > 0) {
-					this._dispatchToWorker(worker, this._queue.remove().value);
-				} else {
-					this._runningWorkers.removeWithNode(worker.runningNode);
-					worker.runningNode = null;
-					this._idleWorkers.add(worker);
-				}
-			break;
-			case 'progress':
-				worker._progressMade(e.data.data);
-			break;
-			case 'interleave':
-			break;
-		}
-	}
-};
-;function RunnerPool(taskQueue, numWorkers) {
-	AbstractRunnerPool.call(this, taskQueue, numWorkers, numWorkers);
-};
-
-var proto = RunnerPool.prototype = Object.create(AbstractRunnerPool.prototype);
-proto._createActualWorker = function() {
-	return new Worker(workerFactory._cfg.baseUrl + '/webworkers/runner.js');
-};
 // TODO: exception handling
 // to catch failures in workers and remove their promises.
-var PromisingWorker = 
+var Runner = 
 (function() {
 	var messageHandlers = {
 		registration: function(e) {
@@ -697,7 +490,7 @@ var PromisingWorker =
 		}
 	};
 
-	function PromisingWorker(url) {
+	function Runner(url) {
 		url = workerFactory._cfg.baseUrl + '/webworkers/pWorker.js' + ((url) ? '#' + url : '');
 		this._worker = new Worker(url);
 		var channel = new MessageChannel();
@@ -719,7 +512,7 @@ var PromisingWorker =
 		return this;
 	}
 
-	PromisingWorker.prototype = {
+	Runner.prototype = {
 		terminate: function() {
 			this._promises = {};
 			this._readyCbs = [];
@@ -829,14 +622,14 @@ var PromisingWorker =
 		}
 	};
 
-	return PromisingWorker;
+	return Runner;
 })();
 // TODO: Pull out a common base class or mixin for this and AbstractRunnerPool
 // to share.
-var PromisingWorkerPool =
+var RunnerPool =
 (function() {
 	var regDoc = "register: function(name, func, [promise=true] [, async=false] [, interleave=false])";
-	function PromisingWorkerPool(url, taskQueue, minWorkers, maxWorkers) {
+	function RunnerPool(url, taskQueue, minWorkers, maxWorkers) {
 		this._url = url;
 		this._queue = taskQueue;
 		this._minWorkers = minWorkers;
@@ -863,10 +656,10 @@ var PromisingWorkerPool =
 		}
 	}
 
-	PromisingWorkerPool.prototype = {
+	RunnerPool.prototype = {
 		_createWorker: function(cb) {
 			++this._pendingCreations;
-			var worker = new PromisingWorker(this._url)
+			var worker = new Runner(this._url)
 			worker.ready(cb);
 			return worker;
 		},
@@ -925,7 +718,9 @@ var PromisingWorkerPool =
 			var task = normalizeArgs(args, context, fn, opts);
 			task.type = 'pass_invoke';
 			if (!this._isReady) {
+				task.promise = new Promise();
 				this._queue.add(task);
+				return task.promise;
 			} else {
 				return this._submit(task);
 			}
@@ -1028,7 +823,7 @@ var PromisingWorkerPool =
 		}
 	};
 
-	return PromisingWorkerPool;
+	return RunnerPool;
 })();
 if (typeof define !== 'undefined') {
 	define(function() {

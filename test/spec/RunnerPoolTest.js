@@ -6,8 +6,8 @@ function(Runners) {
 		throw 'Task failed';
 	}
 
-	describe('Runners', function() {
-		describe('All runner pools (AbstractRunnerPool)', function() {
+	describe('RunnerPool', function() {
+		describe('All runner pools', function() {
 			var pool = Runners.newFixedRunnerPool(2);
 			it('Allows submission of functions', function(done) {
 				pool.submit(function() {
@@ -223,7 +223,7 @@ function(Runners) {
 			});
 
 			it('Runs pending tasks when a worker becomes free', function(done) {
-				var pool = Runners.newSingleRunnerPool();
+				var pool = Runners.newFixedRunnerPool(1);
 
 				pool.submit(function() {
 					setTimeout(function() {
