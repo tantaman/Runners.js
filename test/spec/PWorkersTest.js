@@ -117,8 +117,8 @@ function(Runners) {
 			// });
 
 			it('Allows interrupts of a=synchronous tasks', function(done) {
-				pool.ready(
-				function() {
+				// pool.ready(
+				// function() {
 					var promise = pool.submit(function() {
 						function beBusy() {
 							if (!ic.interrupted)
@@ -138,8 +138,10 @@ function(Runners) {
 						console.log(err);
 					});
 
-					promise.interrupt();
-				});
+					setTimeout(function() {
+						promise.interrupt();
+					}, 25);
+			// 	});
 			});
 
 		});

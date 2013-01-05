@@ -5,6 +5,8 @@ function Queue(maxSize) {
 
 Queue.prototype = {
 	add: function(value) {
+		if (this.size() == this._maxSize)
+			throw "Queue has reached its limit";
 		this._list.pushFront(value);
 	},
 

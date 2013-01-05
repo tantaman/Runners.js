@@ -81,11 +81,12 @@ PromisingWorker.prototype = {
 	},
 
 	submit: function(args, context, fn, opts) {
-		return this._submit(normalizeArgs(args, context, fn, opts));
+		var msg = normalizeArgs(args, context, fn, opts);
+		msg.type = 'pass_invoke';
+		return this._submit(msg);
 	},
 
 	_submit: function(msg, promise, makePromise) {
-		msg.type = msg.type || 'pass_invoke';
 		msg.id = (this._invokeId += 1);
 		if (typeof msg.fn === 'function')
 			msg.fn = msg.fn.toString();
@@ -135,18 +136,18 @@ PromisingWorker.prototype = {
 		}
 	},
 
-	_notifyRegCbs: function(fn, registration) {
-		this._regCbs.forEach(function(cb) {
-			cb(fn, registration);
-		});
-	},
-
 	ready: function(cb) {
 		if (this._isReady) {
 			cb(this, this._err);
 		} else {
 			this._readyCbs.push(cb);
 		}
+	},
+
+	_notifyRegCbs: function(fn, registration) {
+		this._regCbs.forEach(function(cb) {
+			cb(fn, registration);
+		});
 	},
 
 	_ready: function(err) {
