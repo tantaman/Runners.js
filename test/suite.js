@@ -1,5 +1,5 @@
 define([
-'spec/RunnersTest',
+// 'spec/RunnersTest',
 'spec/PWorkersTest'
 ], function() {
   'use strict';
