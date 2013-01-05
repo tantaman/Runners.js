@@ -108,297 +108,309 @@ function normalizeArgs(args, context, fn, opts) {
 		opts: opts
 	};
 }
-function Promise(interruptListener) {
-	this._progressCbs = [];
-	this._doneCbs = [];
-	this._failCbs = [];
-	this._interruptCbs = [];
+var Promise = (function() {
+	function Promise(interruptListener) {
+		this._progressCbs = [];
+		this._doneCbs = [];
+		this._failCbs = [];
+		this._interruptCbs = [];
 
-	if (interruptListener)
-		this._interruptCbs.push(interruptListener);
+		if (interruptListener)
+			this._interruptCbs.push(interruptListener);
 
-	this._doneFilter = identity;
-	this._failFilter = identity;
+		this._doneFilter = identity;
+		this._failFilter = identity;
 
-	this._state = 'pending';
-}
+		this._state = 'pending';
+	}
 
-Promise.prototype = {
-	then: function(doneBacks, failBacks, progressBacks) {
-		this._doneCbs = combine(this._doneCbs, doneBacks);
-		this._failCbs = combine(this._failCbs, failBacks);
-		this._progressCbs = combine(this._progressCbs, progressBacks);
+	Promise.prototype = {
+		then: function(doneBacks, failBacks, progressBacks) {
+			this._doneCbs = combine(this._doneCbs, doneBacks);
+			this._failCbs = combine(this._failCbs, failBacks);
+			this._progressCbs = combine(this._progressCbs, progressBacks);
 
-		return this;
-	},
+			return this;
+		},
 
-	done: function() {
-		if (this._state === 'resolved') {
-			this._callLateArrivals(arguments);
-		} else if (this._state === 'pending') {
-			this._doneCbs = combineArgs(this._doneCbs, arguments);
-		}
+		done: function() {
+			if (this._state === 'resolved') {
+				this._callLateArrivals(arguments);
+			} else if (this._state === 'pending') {
+				this._doneCbs = combineArgs(this._doneCbs, arguments);
+			}
 
-		return this;
-	},
+			return this;
+		},
 
-	fail: function() {
-		if (this._state === 'rejected') {
-			this._callLateArrivals(arguments);
-		} else if (this._state === 'pending') {
-			this._failCbs = combineArgs(this._failCbs, arguments);
-		}
+		fail: function() {
+			if (this._state === 'rejected') {
+				this._callLateArrivals(arguments);
+			} else if (this._state === 'pending') {
+				this._failCbs = combineArgs(this._failCbs, arguments);
+			}
 
-		return this;
-	},
+			return this;
+		},
 
-	always: function() {
-		this.done.apply(this, arguments);
-		this.fail.apply(this, arguments);
+		always: function() {
+			this.done.apply(this, arguments);
+			this.fail.apply(this, arguments);
 
-		return this;
-	},
+			return this;
+		},
 
-	progress: function() {
-		if (this._state === 'pending') {
-			this._progressCbs = combineArgs(this._progressCbs, arguments);
-		}
+		progress: function() {
+			if (this._state === 'pending') {
+				this._progressCbs = combineArgs(this._progressCbs, arguments);
+			}
 
-		return this;
-	},
+			return this;
+		},
 
-	pipe: function(doneFilter, failFilter) {
-		this._doneFilter = doneFilter || identity;
-		this._failFilter = failFilter || identity;
+		pipe: function(doneFilter, failFilter) {
+			this._doneFilter = doneFilter || identity;
+			this._failFilter = failFilter || identity;
 
-		switch (this._state) {
-			case 'rejected':
-				this._result = this._failFilter(this._result);
-			break;
-			case 'resolved':
-				this._result = this._doneFilter(this._result);
-			break;
-		}
+			switch (this._state) {
+				case 'rejected':
+					this._result = this._failFilter(this._result);
+				break;
+				case 'resolved':
+					this._result = this._doneFilter(this._result);
+				break;
+			}
 
-		return this;
-	},
+			return this;
+		},
 
-	interrupt: function(cb) {
-		if (!cb) {
-			this._interruptCbs.forEach(function(cb) {
+		interrupt: function(cb) {
+			if (!cb) {
+				this._interruptCbs.forEach(function(cb) {
+					try {
+						cb();
+					} catch (e) {
+						console.log(e);
+						console.log(e.stack);
+					}
+				});
+			} else {
+				this._interruptCbs = combineArgs(this._interruptCbs, arguments);
+			}
+
+			return this;
+		},
+
+		state: function() {
+			return this._state;
+		},
+
+		_callLateArrivals: function(args) {
+			for (var i = 0; i < args.length; ++i) {
+				var arg = args[i];
+				if (Array.isArray(arg)) {
+					arg.forEach(function(f) {
+						f(this._result);
+					}, this)
+				} else {
+					arg(this._result);
+				}
+			}
+		},
+
+		_setState: function(state, result) {
+			if (this._state !== 'pending')
+				throw 'Illegal state transition';
+
+			this._state = state;
+			switch (state) {
+				case 'rejected':
+					this._result = this._failFilter(result);
+					this._callFailbacks();
+				break;
+				case 'resolved':
+					this._result = this._doneFilter(result);
+					this._callDonebacks();
+				break;
+				default:
+					throw 'Illegal state transition';
+			}
+
+			this._failCbs = [];
+			this._doneCbs = [];
+			this._failFilter = this._doneFilter = identity;
+		},
+
+		_callFailbacks: function() {
+			this._failCbs.forEach(function(fcb) {
 				try {
-					cb();
+					fcb(this._result);
 				} catch (e) {
 					console.log(e);
-					console.log(e.stack);
 				}
-			});
-		} else {
-			this._interruptCbs = combineArgs(this._interruptCbs, arguments);
+			}, this);
+		},
+
+		_callDonebacks: function() {
+			this._doneCbs.forEach(function(dcb) {
+				try {
+					dcb(this._result);
+				} catch (e) {
+					console.log(e);
+				}
+			}, this);
+		},
+
+		_progressMade: function(data) {
+			this._progressCbs.forEach(function(pcb) {
+				try {
+					pcb(data);
+				} catch (e) {
+					console.log(e);
+				}
+			}, this);
 		}
+	};
 
-		return this;
-	},
-
-	state: function() {
-		return this._state;
-	},
-
-	_callLateArrivals: function(args) {
-		for (var i = 0; i < args.length; ++i) {
-			var arg = args[i];
-			if (Array.isArray(arg)) {
-				arg.forEach(function(f) {
-					f(this._result);
-				}, this)
-			} else {
-				arg(this._result);
-			}
-		}
-	},
-
-	_setState: function(state, result) {
-		if (this._state !== 'pending')
-			throw 'Illegal state transition';
-
-		this._state = state;
-		switch (state) {
-			case 'rejected':
-				this._result = this._failFilter(result);
-				this._callFailbacks();
-			break;
-			case 'resolved':
-				this._result = this._doneFilter(result);
-				this._callDonebacks();
-			break;
-			default:
-				throw 'Illegal state transition';
-		}
-
-		this._failCbs = [];
-		this._doneCbs = [];
-		this._failFilter = this._doneFilter = identity;
-	},
-
-	_callFailbacks: function() {
-		this._failCbs.forEach(function(fcb) {
-			try {
-				fcb(this._result);
-			} catch (e) {
-				console.log(e);
-			}
-		}, this);
-	},
-
-	_callDonebacks: function() {
-		this._doneCbs.forEach(function(dcb) {
-			try {
-				dcb(this._result);
-			} catch (e) {
-				console.log(e);
-			}
-		}, this);
-	},
-
-	_progressMade: function(data) {
-		this._progressCbs.forEach(function(pcb) {
-			try {
-				pcb(data);
-			} catch (e) {
-				console.log(e);
-			}
-		}, this);
-	}
-};
-function LinkedList() {
-	this._head = null;
-	this._tail = null;
-	this._size = 0;
-}
-
-LinkedList.prototype = {
-	pushBack: function(value) {
-		++this._size;
-		var node = {
-			value: value,
-			next: null,
-			prev: null
-		};
-		if (this._head == null) {
-			this._head = this._tail = node;
-		} else {
-			this._tail.next = node;
-			node.prev = this._tail;
-			this._tail = node;
-		}
-
-		return node;
-	},
-
-	popBack: function() {
-		--this._size;
-		var node = this._tail;
-		this._tail = this._tail.prev;
-		if (this._tail != null)
-			this._tail.next = null;
-		return node;
-	},
-
-	popFront: function() {
-		--this._size;
-		var node = this._head;
-		this._head = this._head.next;
-		this._head.prev = null;
-		return node;
-	},
-
-	pushFront: function(value) {
-		++this._size;
-		var node = {
-			value: value,
-			next: null,
-			prev: null
-		};
-		if (this._head == null) {
-			this._head = this._tail = node;
-		} else {
-			this._head.prev = node;
-			node.next = this._head;
-			this._head = node;
-		}
-
-		return node;
-	},
-
-	removeWithNode: function(node) {
-		if (node == null) throw 'Null node';
-
-		--this._size;
-
-		var prevNode = node.prev;
-		var nextNode = node.next;
-		if (prevNode != null) {
-			prevNode.next = node.next;
-		}
-
-		if (nextNode != null) {
-			nextNode.prev = node.prev;
-		}
-
-		node.next = node.prev = null;
-	},
-
-	add: function(value) {
-		return this.pushFront(value);
-	},
-
-	remove: function() {
-		return this.popBack();
-	},
-
-	forEach: function(func, ctx) {
-		var crsr = this._head;
-		while (crsr != null) {
-			func.call(ctx, crsr.value);
-			crsr = crsr.next;
-		}
-	},
-
-	clear: function() {
-		this._head = this._tail = null;
+	return Promise;
+})();
+var LinkedList = (function() {
+	function LinkedList() {
+		this._head = null;
+		this._tail = null;
 		this._size = 0;
-	},
+	}
 
-	size: function() { return this._size; }
-};
-function Queue(maxSize) {
-	this._maxSize = (maxSize == null) ? -1 : maxSize;
-	this._list = new LinkedList();
-}
+	LinkedList.prototype = {
+		pushBack: function(value) {
+			++this._size;
+			var node = {
+				value: value,
+				next: null,
+				prev: null
+			};
+			if (this._head == null) {
+				this._head = this._tail = node;
+			} else {
+				this._tail.next = node;
+				node.prev = this._tail;
+				this._tail = node;
+			}
 
-Queue.prototype = {
-	add: function(value) {
-		if (this.size() == this._maxSize)
-			throw "Queue has reached its limit";
-		this._list.pushFront(value);
-	},
+			return node;
+		},
 
-	remove: function() {
-		return this._list.popBack();
-	},
+		popBack: function() {
+			--this._size;
+			var node = this._tail;
+			this._tail = this._tail.prev;
+			if (this._tail != null)
+				this._tail.next = null;
+			return node;
+		},
 
-	clear: function() {
-		this._list.clear();
-	},
+		popFront: function() {
+			--this._size;
+			var node = this._head;
+			this._head = this._head.next;
+			this._head.prev = null;
+			return node;
+		},
 
-	full: function() {
-		if (this._maxSize < 0) return false;
+		pushFront: function(value) {
+			++this._size;
+			var node = {
+				value: value,
+				next: null,
+				prev: null
+			};
+			if (this._head == null) {
+				this._head = this._tail = node;
+			} else {
+				this._head.prev = node;
+				node.next = this._head;
+				this._head = node;
+			}
 
-		return this._list.size() >= this._maxSize;
-	},
+			return node;
+		},
 
-	size: function() { return this._list.size(); }
-};
+		removeWithNode: function(node) {
+			if (node == null) throw 'Null node';
+
+			--this._size;
+
+			var prevNode = node.prev;
+			var nextNode = node.next;
+			if (prevNode != null) {
+				prevNode.next = node.next;
+			}
+
+			if (nextNode != null) {
+				nextNode.prev = node.prev;
+			}
+
+			node.next = node.prev = null;
+		},
+
+		add: function(value) {
+			return this.pushFront(value);
+		},
+
+		remove: function() {
+			return this.popBack();
+		},
+
+		forEach: function(func, ctx) {
+			var crsr = this._head;
+			while (crsr != null) {
+				func.call(ctx, crsr.value);
+				crsr = crsr.next;
+			}
+		},
+
+		clear: function() {
+			this._head = this._tail = null;
+			this._size = 0;
+		},
+
+		size: function() { return this._size; }
+	};
+
+	return LinkedList;
+})();
+var Queue = (function() {
+	function Queue(maxSize) {
+		this._maxSize = (maxSize == null) ? -1 : maxSize;
+		this._list = new LinkedList();
+	}
+
+	Queue.prototype = {
+		add: function(value) {
+			if (this.size() == this._maxSize)
+				throw "Queue has reached its limit";
+			this._list.pushFront(value);
+		},
+
+		remove: function() {
+			return this._list.popBack();
+		},
+
+		clear: function() {
+			this._list.clear();
+		},
+
+		full: function() {
+			if (this._maxSize < 0) return false;
+
+			return this._list.size() >= this._maxSize;
+		},
+
+		size: function() { return this._list.size(); }
+	};
+
+	return Queue;
+})();
 var workerFactory = {
 	_cfg: {
 		baseUrl: '.'
