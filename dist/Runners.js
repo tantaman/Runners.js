@@ -787,7 +787,7 @@ var RunnerPool =
 				worker = this._idleWorkers.remove().value;
 				var promise = this._dispatchToWorker(worker, task);
 				result = promise;
-			} else if (this.numWorkers() + this._pendingCreations < this._maxWorkers) {
+			} else if (this.numWorkers() < this._maxWorkers) {
 				result = task.promise = new Promise();
 				this._queue.add(task);
 				this._createWorker(this._workerCreated);
@@ -817,7 +817,8 @@ var RunnerPool =
 		},
 
 		numWorkers: function() {
-			return this._idleWorkers.size() + this._runningWorkers.size();
+			return this._idleWorkers.size() + this._runningWorkers.size()
+				+ this._pendingCreations;
 		},
 
 		queueSize: function() {

@@ -164,10 +164,10 @@ self.onmessage = function(e) {
 
 	try {
 		importScripts(url);
-		if (typeof self.exports === 'object') {
-			for (var key in self.exports) {
-				if (self.exports.hasOwnProperty(key)) {
-					self.workerContext.register(key, self.exports[key]);
+		if (typeof self.runnables === 'object') {
+			for (var key in self.runnables) {
+				if (self.runnables.hasOwnProperty(key)) {
+					self.workerContext.register(key, self.runnables[key]);
 				}
 			}
 		}

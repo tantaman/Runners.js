@@ -1,5 +1,5 @@
 'use strict';
-self.exports = {
+self.runnables = {
 	soren: function() {
 		return 'kierk';
 	},
