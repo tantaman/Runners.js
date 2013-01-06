@@ -29,6 +29,11 @@ var workerFactory = {
 		return new Runner(url);
 	},
 
+	Runner: Runner,
+	RunnerPool: RunnerPool,
+	Queue: Queue,
+	LinkedList: LinkedList
+
 	// newCachedRunnerPool: function() {
 	// 	throw 'Not yet implemented';
 	// },
