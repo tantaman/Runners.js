@@ -117,18 +117,43 @@ function(Runners, CommonTests) {
 		});
 
 		describe('runnables / fns', function() {
-			var runner = Runners.newRunner('../../test/spec/dummyRunner.js');
+			var runner = Runners.newFixedRunnerPool('../test/spec/dummyRunner.js', 2);
 
 			CommonTests.runnables.call(this, runner);
 
-			it('Queues calls to functions in the map when workers are busy', 
-			function() {
+			it('Queues calls to functions when all workers are busy', 
+			function(done) {
+				var promises = [];
+				promises.push(runner.fns.stayBusy());
+				promises.push(runner.fns.stayBusy());
+				promises.push(runner.fns.stayBusy());
 
+				expect(runner.queueSize()).to.equal(1);
+
+				promises.push(runner.fns.stayBusy());
+
+				expect(runner.queueSize()).to.equal(2);
+
+				promises[3].then(function() {
+					done();
+				}, function() {
+					done();
+				});
+
+				promises.forEach(function(promise) {
+					promise.cancel(true);
+				});
 			});
 
 			it('Runs functions in the map immediately if workers are available',
 			function() {
+				var runner = Runners.newFixedRunnerPool('../test/spec/dummyRunner.js', 2);
 
+				runner.ready(function() {
+					runner.fns.kant();
+					expect(runner.queueSize()).to.equal(0);
+					runner.terminate();
+				});
 			});
 
 			after(function() {
@@ -137,7 +162,7 @@ function(Runners, CommonTests) {
 		});
 
 		describe("a fn's promise", function() {
-			var runner = Runners.newRunner('../../test/spec/dummyRunner.js');
+			var runner = Runners.newRunner('../test/spec/dummyRunner.js');
 			CommonTests.runnables_promise.call(this, runner);
 
 			after(function() {
@@ -197,8 +222,6 @@ function(Runners, CommonTests) {
 				}, 30);
 			});
 		});
-
-
 
 
 		// describe('CachedRunnerPool', function() {

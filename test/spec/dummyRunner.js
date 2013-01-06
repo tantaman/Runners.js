@@ -13,6 +13,22 @@ self.runnables = {
 	}
 };
 
+workerContext.register('stayBusy', function() {
+	var ic = workerContext.invocation();
+	var a = 1;
+	function beBusy() {
+		a += 1;
+		if (!ic.interrupted)
+			setTimeout(beBusy, 5);
+		else {
+			ic.done(a);
+		}
+	}
+
+	beBusy();
+
+}, true, true);
+
 workerContext.register('noPromises', function() {
 
 }, false);

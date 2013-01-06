@@ -13,6 +13,9 @@ var workerFactory = {
 			log.log = function() {};
 			log.error = function() {};
 		}
+
+		if (this._cfg.path.length > 1 && this._cfg.path[this._cfg.path.length - 1] == '/')
+			this._cfg.path = this._cfg.path.substring(0, this._cfg.path.length - 1);
 	},
 
 	newFixedRunnerPool: function(url, numWorkers, queueCap) {

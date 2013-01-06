@@ -7,7 +7,7 @@ function(Runners, CommonTests) {
 	}
 
 	describe('Runner', function() {
-		var worker = Runners.newRunner('../../test/spec/dummyRunner.js');
+		var worker = Runners.newRunner('../test/spec/dummyRunner.js');
 		// TODO: the worker may not be ready..
 		// Need to add a ready listener so we know when all function registrations
 		// have been received.
@@ -18,7 +18,9 @@ function(Runners, CommonTests) {
 		describe('ready', function() {
 			it('Notifies when ready (scripts have been imported and functions registered)',
 			function(done) {
-				done();
+				worker.ready(function() {
+					done();
+				});
 			});
 
 			it('Provides an error to ready callbacks if there was an error loading scripts',
@@ -29,6 +31,13 @@ function(Runners, CommonTests) {
 
 		describe('runnables / fns', function() {
 			CommonTests.runnables.call(this, worker);
+
+			it('Does not return a promise for a function if specified for that func', function(done) {
+				worker.ready(function() {
+					expect(worker.fns.noPromises()).to.equal(undefined);
+					done();
+				});
+			});
 		});
 
 		describe("fn's promises", function() {

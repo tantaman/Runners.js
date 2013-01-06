@@ -1,42 +1,36 @@
 <html>
 <head>
-	<script type="text/javascript" src="dist/WorkerConsole.js"></script>
 	<script type="text/javascript" src="dist/Runners.js"></script>
 </head>
 <body>
 	<script>
-		var pool = Runners.newFixedRunnerPool(2);
+		Runners.config({path: 'dist/'});
+		var pool = Runners.newFixedRunnerPool('../test/spec/dummyRunner.js', 2);
 
-		// TODO: return promises
-		// TODO: allow callback when promise completes
-		function busy() {
-			var a = 0;
-			while(true) {
-				a+=1;
-			}
-		}
+		pool.ready(function() {
+			var promises = [];
+			promises.push(pool.fns.stayBusy());
+			promises.push(pool.fns.stayBusy());
 
-		// pool.execute(busy);
-		// pool.execute(busy);
+			promises.push(pool.fns.stayBusy());
+			promises.push(pool.fns.stayBusy());
 
-		pool.submit(function() {
-			console.log('Hello');
+			function logDone(r) {
+				console.log('done... ' + r);
+			};
+
+			promises.forEach(function(promise) {
+				promise.then(logDone);
+			});
+
+			promises.forEach(function(promise) {
+				promise.interrupt();
+			});
+
+			setTimeout(function() {
+				console.log(pool.queueSize());
+			}, 250)
 		});
-		pool.submit(function() {
-			console.log('hoodby');
-		});
-		var promise = pool.submit(function() {
-			console.log('hoodbye');
-			throw 'shit shit';
-		});
-
-		promise.then(function() {
-			console.log('Nice!');
-		}, function() {
-			console.log('Not nice :/');
-		});
-
-		console.log(promise);
 	</script>
 </body>
 </html>

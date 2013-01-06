@@ -14,7 +14,7 @@ define(function() {
 			it('Is a map of registered functions', function(done) {
 				worker.ready(function() {
 					var funcs = Object.keys(worker.fns);
-					expect(funcs).to.deep.equal(['noPromises', 'myAsync', 'soren', 'kant', 'either']);
+					expect(funcs).to.deep.equal(['stayBusy', 'noPromises', 'myAsync', 'soren', 'kant', 'either']);
 					done();
 				});
 			});
@@ -34,13 +34,6 @@ define(function() {
 						expect(result).to.equal('1or2');
 						done();
 					});
-				});
-			});
-
-			it('Does not return a promise for a function if specified for that func', function(done) {
-				worker.ready(function() {
-					expect(worker.fns.noPromises()).to.equal(undefined);
-					done();
 				});
 			});
 

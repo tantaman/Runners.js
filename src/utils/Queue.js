@@ -8,11 +8,15 @@ var Queue = (function() {
 		add: function(value) {
 			if (this.size() == this._maxSize)
 				throw "Queue has reached its limit";
-			this._list.pushFront(value);
+			return this._list.pushFront(value);
 		},
 
 		remove: function() {
 			return this._list.popBack();
+		},
+
+		removeWithNode: function(node) {
+			this._list.removeWithNode(node);
 		},
 
 		clear: function() {

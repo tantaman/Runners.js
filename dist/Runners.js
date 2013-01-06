@@ -134,14 +134,12 @@ function normalizeArgs(args, context, fn, opts) {
 	};
 }
 var Promise = (function() {
-	function Promise(interruptListener) {
+	function Promise() {
 		this._progressCbs = [];
 		this._doneCbs = [];
 		this._failCbs = [];
+		this._cancelCbs = [];
 		this._interruptCbs = [];
-
-		if (interruptListener)
-			this._interruptCbs.push(interruptListener);
 
 		this._doneFilter = identity;
 		this._failFilter = identity;
@@ -226,6 +224,24 @@ var Promise = (function() {
 			return this;
 		},
 
+		cancel: function(cb) {
+			if (!cb || typeof cb === 'boolean') {
+				var mayInterrupt = (cb == null) ? false : true;
+				this._cancelCbs.forEach(function(cb) {
+					try {
+						cb(mayInterrupt);
+					} catch (e) {
+						log.error('Error invoking a cancel callback');
+						log.error(e.stack);
+					}
+				});
+			} else {
+				this._cancelCbs = combineArgs(this._cancelCbs, arguments);
+			}
+
+			return this;
+		},
+
 		state: function() {
 			return this._state;
 		},
@@ -244,8 +260,12 @@ var Promise = (function() {
 		},
 
 		_setState: function(state, result) {
-			if (this._state !== 'pending')
+			if (this._state == state)
+				return;
+
+			if (this._state !== 'pending') {
 				throw 'Illegal state transition';
+			}
 
 			this._state = state;
 			switch (state) {
@@ -417,11 +437,15 @@ var Queue = (function() {
 		add: function(value) {
 			if (this.size() == this._maxSize)
 				throw "Queue has reached its limit";
-			this._list.pushFront(value);
+			return this._list.pushFront(value);
 		},
 
 		remove: function() {
 			return this._list.popBack();
+		},
+
+		removeWithNode: function(node) {
+			this._list.removeWithNode(node);
 		},
 
 		clear: function() {
@@ -454,6 +478,9 @@ var workerFactory = {
 			log.log = function() {};
 			log.error = function() {};
 		}
+
+		if (this._cfg.path.length > 1 && this._cfg.path[this._cfg.path.length - 1] == '/')
+			this._cfg.path = this._cfg.path.substring(0, this._cfg.path.length - 1);
 	},
 
 	newFixedRunnerPool: function(url, numWorkers, queueCap) {
@@ -567,6 +594,11 @@ var Runner =
 	Runner.prototype = {
 		terminate: function() {
 			this._terminated = true;
+
+			for (var k in this._promises) {
+				this._promises[k]._setState('rejected', 'terminated');
+			}
+
 			this._promises = {};
 			this._readyCbs = [];
 			this._fns = {};
@@ -698,7 +730,7 @@ var RunnerPool =
 		this._workerCreated = this._workerCreated.bind(this);
 
 		for (var i = 0; i < minWorkers; ++i) {
-			var worker = this._createWorker(workerReady);
+			this._createWorker(workerReady);
 		}
 
 		var readyWorkers = 0;
@@ -797,20 +829,32 @@ var RunnerPool =
 				var promise = this._dispatchToWorker(worker, task);
 				result = promise;
 			} else if (this.numWorkers() < this._maxWorkers) {
-				result = task.promise = new Promise();
-				this._queue.add(task);
+				result = this._queueTask(task);
 				this._createWorker(this._workerCreated);
 			} else {
-				result = task.promise = new Promise();
-				this._queue.add(task);
+				result = this._queueTask(task);
 			}
 
 			return createPublicInterface(result);
 		},
 
+		_queueTask: function(task) {
+			task.queueNode = this._queue.add(task);
+			var _this = this;
+			return (task.promise = new Promise()).cancel(function(mayInterrupt) {
+				if (task.queueNode) {
+					_this._queue.removeWithNode(task.queueNode);
+					task.promise._setState('rejected', 'canceled');
+				} else if (mayInterrupt) {
+					task.promise.interrupt();
+				}
+			});
+		},
+
 		_workerCompleted: function(worker, registration) {
 			if (this._queue.size() > 0) {
 				var task = this._queue.remove().value;
+				delete task.queueNode;
 				var promise = this._dispatchToWorker(worker, task);
 			} else {
 				if (worker.runningNode) {
@@ -864,6 +908,11 @@ var RunnerPool =
 		},
 
 		terminate: function() {
+			while (this._queue.size() > 0) {
+				var task = this._queue.remove();
+				task.value.promise._setState('rejected', 'terminated');
+			}
+
 			this._queue.clear();
 			this._runningWorkers.forEach(function(worker) {
 				worker.terminate();

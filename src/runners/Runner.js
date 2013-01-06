@@ -68,6 +68,11 @@ var Runner =
 	Runner.prototype = {
 		terminate: function() {
 			this._terminated = true;
+
+			for (var k in this._promises) {
+				this._promises[k]._setState('rejected', 'terminated');
+			}
+
 			this._promises = {};
 			this._readyCbs = [];
 			this._fns = {};

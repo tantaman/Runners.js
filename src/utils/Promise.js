@@ -1,12 +1,10 @@
 var Promise = (function() {
-	function Promise(interruptListener) {
+	function Promise() {
 		this._progressCbs = [];
 		this._doneCbs = [];
 		this._failCbs = [];
+		this._cancelCbs = [];
 		this._interruptCbs = [];
-
-		if (interruptListener)
-			this._interruptCbs.push(interruptListener);
 
 		this._doneFilter = identity;
 		this._failFilter = identity;
@@ -91,6 +89,24 @@ var Promise = (function() {
 			return this;
 		},
 
+		cancel: function(cb) {
+			if (!cb || typeof cb === 'boolean') {
+				var mayInterrupt = (cb == null) ? false : true;
+				this._cancelCbs.forEach(function(cb) {
+					try {
+						cb(mayInterrupt);
+					} catch (e) {
+						log.error('Error invoking a cancel callback');
+						log.error(e.stack);
+					}
+				});
+			} else {
+				this._cancelCbs = combineArgs(this._cancelCbs, arguments);
+			}
+
+			return this;
+		},
+
 		state: function() {
 			return this._state;
 		},
@@ -109,8 +125,12 @@ var Promise = (function() {
 		},
 
 		_setState: function(state, result) {
-			if (this._state !== 'pending')
+			if (this._state == state)
+				return;
+
+			if (this._state !== 'pending') {
 				throw 'Illegal state transition';
+			}
 
 			this._state = state;
 			switch (state) {
