@@ -473,7 +473,9 @@ var workerFactory = {
 	Runner: Runner,
 	RunnerPool: RunnerPool,
 	Queue: Queue,
-	LinkedList: LinkedList
+	LinkedList: LinkedList,
+	PrivatePromise: Promise,
+	createPublicInterface: createPublicInterface
 
 	// newCachedRunnerPool: function() {
 	// 	throw 'Not yet implemented';
@@ -552,7 +554,7 @@ var Runner =
 		this._invokeId = 0;
 		this._promises = {};
 		this._readyCbs = [];
-		this.fns = {};
+		this.runnables = this.fns = {};
 		this.registrations = {};
 
 		this._regCbs = [];
@@ -766,6 +768,8 @@ var RunnerPool =
 					};
 				})(registration, fname);
 			}
+
+			this.runnables = this.fns;
 		},
 
 		submit: function(args, context, fn, opts) {

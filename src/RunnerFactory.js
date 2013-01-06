@@ -32,7 +32,9 @@ var workerFactory = {
 	Runner: Runner,
 	RunnerPool: RunnerPool,
 	Queue: Queue,
-	LinkedList: LinkedList
+	LinkedList: LinkedList,
+	PrivatePromise: Promise,
+	createPublicInterface: createPublicInterface
 
 	// newCachedRunnerPool: function() {
 	// 	throw 'Not yet implemented';

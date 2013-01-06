@@ -1,5 +1,5 @@
-define(['Runners'],
-function(Runners) {
+define(['Runners', '../../test/spec/RunnerCommonTests'],
+function(Runners, CommonTests) {
 	'use strict';
 
 	function failure() {
@@ -27,72 +27,32 @@ function(Runners) {
 			});
 		});
 
-		describe('fns', function() {
-			it('Is a map of registered functions', function(done) {
-				worker.ready(function() {
-					var funcs = Object.keys(worker.fns);
-					expect(funcs).to.deep.equal(['noPromises', 'myAsync', 'soren', 'kant', 'either']);
-					done();
-				});
-			});
-
-			it('Returns a promise when invoking a function from the func map', function(done) {
-				worker.ready(function() {
-					worker.fns.soren().then(function(result) {
-						expect(result).to.equal('kierk');
-						done();
-					});
-				});
-			});
-
-			it('Allows arguments to be passed to the functions in the map', function(done) {
-				worker.ready(function() {
-					worker.fns.either(1, 2).then(function(result) {
-						expect(result).to.equal('1or2');
-						done();
-					});
-				});
-			});
-
-			it('Does not return a promise for a function if specified for that func', function(done) {
-				worker.ready(function() {
-					expect(worker.fns.noPromises()).to.equal(undefined);
-					done();
-				});
-			});
-
-			it('Allows registration of async functions', function(done) {
-				worker.ready(function() {
-					worker.fns.myAsync().then(function(result) {
-						expect(result).to.equal('async ran');
-						done();
-					});
-				});
-			});
-		});
-
-		describe('submit', function() {
-			it('Allows submission of new functions', function(done) {
-				// No need to await ready since we are submitting a new function
-				worker.submit(function() {
-					return 'o snap';
-				}).then(function(result) {
-					expect(result).to.equal('o snap');
-					done();
-				});
-			});
-		});	
-
-		describe("Submit's promise", function() {
-
+		describe('runnables / fns', function() {
+			CommonTests.runnables.call(this, worker);
 		});
 
 		describe("fn's promises", function() {
+			CommonTests.runnables_promise.call(this, worker);
+		});
 
+		describe('submit', function() {
+			CommonTests.submit.call(this, worker);
+			// it('Allows submission of new functions', function(done) {
+			// 	// No need to await ready since we are submitting a new function
+			// 	worker.submit(function() {
+			// 		return 'o snap';
+			// 	}).then(function(result) {
+			// 		expect(result).to.equal('o snap');
+			// 		done();
+			// 	});
+			// });
+		});	
+
+		describe("Submit's promise", function() {
+			CommonTests.submits_promise.call(this, worker);
 		});
 
 		it('Returns interruptable promises', function() {
-
 		});		
 	});
 });

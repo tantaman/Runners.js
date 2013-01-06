@@ -1,7 +1,6 @@
-define(['Runners'],
-function(Runners) {
+define(['Runners', '../../test/spec/RunnerCommonTests'],
+function(Runners, CommonTests) {
 	'use strict';
-
 	function failure() {
 		throw 'Task failed';
 	}
@@ -21,7 +20,7 @@ function(Runners) {
 					function makeProgress() {
 						if (!ic.interrupted) {
 							ic.progress();
-							setTimeout(makeProgress, 15);
+							setTimeout(makeProgress, 5);
 						} else {
 							ic.done();
 						}
@@ -32,7 +31,6 @@ function(Runners) {
 				var opts = {async: true};
 
 				var t1Promise = pool.submit(task, opts);
-				console.log(t1Promise);
 				t1Promise.progress(function() {
 					t1Cnt++;
 				});
@@ -112,138 +110,58 @@ function(Runners) {
 			it('Rejects execution when queue is full and all workers are busy', function() {
 
 			});
+
+			after(function() {
+				pool.terminate();
+			});
 		});
 
-		describe('fns', function() {
+		describe('runnables / fns', function() {
+			var runner = Runners.newRunner('../../test/spec/dummyRunner.js');
 
+			CommonTests.runnables.call(this, runner);
+
+			it('Queues calls to functions in the map when workers are busy', 
+			function() {
+
+			});
+
+			it('Runs functions in the map immediately if workers are available',
+			function() {
+
+			});
+
+			after(function() {
+				runner.terminate();
+			});
 		});
 
-		describe('a fns promise', function() {
+		describe("a fn's promise", function() {
+			var runner = Runners.newRunner('../../test/spec/dummyRunner.js');
+			CommonTests.runnables_promise.call(this, runner);
 
+			after(function() {
+				runner.terminate();
+			});
 		});
 
 		describe('submit', function() {
 			var pool = Runners.newFixedRunnerPool(2);
-			it('Allows submission of functions', function(done) {
-				pool.submit(function() {
-					return 'ran';
-				}).then(function(result) {
-					expect(result).to.equal('ran');
-					done();
-				}, failure);
-			});
 
-			it('Allows submission of functions with arguments', function(done) {
-				pool.submit([1,2,3,4], function(a1,a2,a3,a4) {
-					return [a1,a2,a3,a4];
-				}).then(function(result) {
-					expect(result).to.deep.equal([1,2,3,4]);
-					done();
-				}, failure);
-			});
+			CommonTests.submit.call(this, pool);
 
-			it('Allows submission of functions with args and context', function(done) {
-				pool.submit([1,2], {that: 'this'}, function(a1, a2) {
-					return {
-						args: [a1, a2],
-						context: this
-					};
-				}).then(function(result) {
-					expect(result).to.deep.equal({
-						args: [1,2],
-						context: {that: 'this'}
-					});
-					done();
-				}, failure);
-			});
-
-			it('Allows submission of function with context and no args', function(done) {
-				pool.submit({one: 'two'}, function() {
-					return this;
-				}).then(function(result) {
-					expect(result).to.deep.equal({
-						one: 'two'
-					});
-					done();
-				}, failure);
-			});
-
-			it('Returns promises from submissions', function(done) {
-				var promise = pool.submit(function() {
-					return 'result';
-				});
-
-				promise.pipe(function(result) {
-					return result + 'piped';
-				});
-
-				promise.done(function(result) {
-					try {
-						expect(result).to.equal('resultpiped');
-						done();
-					} catch (e) {
-						done(e);
-					}
-				});
-			});
-
-			it('Provides features for runnig async tasks', function(done) {
-				pool.submit(function() {
-					setTimeout(function() {
-						ic.done(':)');
-					}, 30);
-				}, {async:true}).then(function(result) {
-					try {
-						expect(result).to.equal(':)');
-						done();
-					} catch (e) {
-						done(e);
-					}
-				}, failure);
-			});
-
-			it('Can cache tasks so as to not require re-serialization of the task function', function() {
-
+			after(function() {
+				pool.terminate();
 			});
 		});
 
 		describe("submit's promise", function() {
 			var pool = Runners.newFixedRunnerPool(2);
-			it('Allows interruption of tasks / workers', function(done) {
-				var promise = pool.submit(function() {
-					function beBusy() {
-						if (!ic.interrupted) {
-							setTimeout(beBusy, 5);
-						} else {
-							ic.done('we were interrupted!');
-						}
-					}
+			
+			CommonTests.submits_promise.call(this, pool);
 
-					setTimeout(beBusy, 5);
-				}, {async:true});
-
-				promise.then(function(result) {
-					expect(result).to.equal('we were interrupted!');
-					done();
-				}, failure);
-
-				promise.interrupt();
-			});
-
-			it('Allows observation of failures', function() {
-
-			});
-
-			it('Allows observation of success', function() {
-
-			});
-
-			it('Allows piping of results', function() {
-
-			});
-
-			it('Allows listening for progress reports', function() {
-
+			after(function() {
+				pool.terminate();
 			});
 		});
 

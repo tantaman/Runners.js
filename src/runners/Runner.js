@@ -55,7 +55,7 @@ var Runner =
 		this._invokeId = 0;
 		this._promises = {};
 		this._readyCbs = [];
-		this.fns = {};
+		this.runnables = this.fns = {};
 		this.registrations = {};
 
 		this._regCbs = [];

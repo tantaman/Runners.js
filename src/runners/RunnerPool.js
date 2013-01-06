@@ -16,7 +16,7 @@ var RunnerPool =
 		this._workerCreated = this._workerCreated.bind(this);
 
 		for (var i = 0; i < minWorkers; ++i) {
-			var worker = this._createWorker(workerReady);
+			this._createWorker(workerReady);
 		}
 
 		var readyWorkers = 0;
@@ -86,6 +86,8 @@ var RunnerPool =
 					};
 				})(registration, fname);
 			}
+
+			this.runnables = this.fns;
 		},
 
 		submit: function(args, context, fn, opts) {

@@ -1,6 +1,28 @@
 define(['Runners'],
 function(Runners) {
-	describe('promises', function() {
+	describe('Promise', function() {
+		describe('then', function() {
+			it('Allows registration of done callbacks', function() {
+
+			});
+
+			it('Allows registration of failure callbacks', function() {
+
+			});
+
+			it('Allows registration of progress callbacks', function() {
+
+			});
+
+			it('Allows registration of all three types of callbacks', function() {
+
+			});
+		});
+
+		describe('done', function() {
+
+		});
+
 		it('Allows observing for completion', function() {
 
 		});
