@@ -25,10 +25,17 @@ runner.ready(function() {
   runner.fns.heavyMath(t1,p1,v);
 
   // Runners return promises so you know when your task finishes or fails.
-  runner.fns.simulate(model).then(function(result) {    
+  var promise = runner.fns.simulate(model);
+  
+  promise.then(function(result) {    
     // update data for renderer
   }, function (failure) {
     // handle failure / exception thrown by the runner
+  });
+  
+  // Runners also provide mechanisms for monitoring progress.  More on that later.
+  promise.progress(function(data) {
+    
   });
 });
 ```
@@ -36,16 +43,16 @@ runner.ready(function() {
 A WebWorker is created behind the scenes and calls to `heavyMath` and `simulate` are dispatched to and run in that worker.
 
 
-What about those times where you have a lot of work, several workers and you want to give work to WebWorkers as they become available?
+What about those times where you have a lot of work and several workers? You'd like to give work to WebWorkers as soon as they become available, right?
 
-Runners does that too.
+`Runners.js` handles that too via `RunnerPools`.
 
 ```javascript
 var runnerPool = Runners.newFixedRunnerPool('path/to/myRunner.js', 3); // A pool of 3 Runners
 runnerPool.ready(function() {
       
     // 3 invocations to heavyMath will run immediately.  The remaining two will be picked up and run
-    // in whatever WebWorker becomes available first.
+    // in whatever Runner/WebWorker becomes available first.
     for (var i = 0; i < 5; ++i) {
       // runnerPools also return promises
       runnerPool.fns.heavyMath().then(function() {
@@ -69,3 +76,18 @@ var promise = rp.submit([arg1,arg2], function(arg1, arg2) {
 
 // submit returns a promise too
 ```
+
+The promises returned by a Runner let you:
+* Monitor the state of the task (pending, rejected, completed)
+* Receive progress updatess from your worker code
+* Interrupt the task if it is running
+* Cancel the task and remove it from the queue if it is not yet running
+* Be called back on completion
+* Be called back on failure
+* Be called back in either case
+* Pipe returned Runner data
+
+Inside the 'WebWorker' code of a Runner you have acces to a variable called `workerContext`.
+
+`workerContext` allows you to get the current `invocation` which lets you send progress information back to the main 
+event loop.  `workerContext.invocation()` also allows you to monitor your task's interrupted status and put your background task into `async` mode.
