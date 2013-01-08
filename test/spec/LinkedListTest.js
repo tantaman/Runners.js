@@ -259,6 +259,38 @@ function(Runners) {
 					expect(list.size()).to.equal(i+1);
 				}
 			});
-		})
+		});
+
+		describe('clear', function() {
+			var list;
+			beforeEach(function() {
+				list = new Runners.LinkedList();
+				list.add(0);
+				list.add(1);
+				list.add(2);
+				list.add(3);
+			});
+			it('Removes all elements from the list', function() {
+				list.clear();
+
+				var size = 0;
+				list.forEach(function() {
+					++size;
+				});
+				
+				expect(size).to.equal(0);
+			});
+
+			it('Sets head and tail nodes to null', function() {
+				list.clear();
+				expect(list.front()).to.equal(null);
+				expect(list.back()).to.equal(null);
+			});
+
+			it('Sets size to 0', function() {
+				list.clear();
+				expect(list.size()).to.equal(0);
+			});
+		});
 	});
 });

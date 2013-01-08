@@ -1,7 +1,8 @@
 define([
 'spec/RunnerTest',
 'spec/RunnerPoolTest',
-'spec/LinkedListTest'
+'spec/LinkedListTest',
+'spec/QueueTest'
 ], function() {
   'use strict';
   var runner = mocha.run();

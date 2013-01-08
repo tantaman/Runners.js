@@ -2,6 +2,10 @@ define(['Runners'],
 function(Runners) {
 	describe('Promise', function() {
 		describe('then', function() {
+			beforEach(function() {
+
+			});
+
 			it('Allows registration of done callbacks', function() {
 
 			});
@@ -20,42 +24,67 @@ function(Runners) {
 		});
 
 		describe('done', function() {
+			it('Allows observing for completion', function() {
+
+			});
+
+			it('Provides the result in the completion callback', function() {
+
+			});
+
+
+			it('Allows multiple completion observers', function() {
+
+			});
+
+
+			it('Supports jquery\'s awkward done arguments style', function() {
+
+			});
+		});
+
+	
+		describe('fail', function() {
+			it('Allows observing for failure', function() {
+
+			});
+
+			it('Provides the result / exception / cause of the failure case', function() {
+
+			});
+		});
+
+		describe('always', function() {
 
 		});
 
-		it('Allows observing for completion', function() {
+		describe('progress', function() {
 
 		});
 
-		it('Allows observing for failure', function() {
+		describe('pipe', function() {
+			it('Allows a translator to be inserted to modify the completion result', function() {
+
+			});
+			
+			it('Allows a translator to be inserted to modify the failure result', function() {
+
+			});
+		});
+
+		describe('interrupt', function() {
 
 		});
 
-		it('Provides the result in the completion callback', function() {
+		describe('cancel', function() {
 
 		});
 
-		it('Allows multiple completion observers', function() {
+		describe('state', function() {
 
 		});
 
 		it('Calls completion observers in the order they were added', function() {
-
-		});
-
-		it('Supports jquery\'s awkward done and failure arguments', function() {
-
-		});
-
-		it('Provides the result / exception of the failure case', function() {
-
-		});
-
-		it('Allows a translator to be inserted to modify the completion result', function() {
-
-		});
-
-		it('Allows a translator to be inserted to modify the failure result', function() {
 
 		});
 	});
