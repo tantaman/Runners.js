@@ -24,6 +24,14 @@ var LinkedList = (function() {
 			return node;
 		},
 
+		back: function() {
+			return this._tail;
+		},
+
+		front: function() {
+			return this._head;
+		},
+
 		popBack: function() {
 			--this._size;
 			var node = this._tail;
@@ -37,7 +45,9 @@ var LinkedList = (function() {
 			--this._size;
 			var node = this._head;
 			this._head = this._head.next;
-			this._head.prev = null;
+
+			if (this._head != null)
+				this._head.prev = null;
 			return node;
 		},
 
@@ -62,17 +72,29 @@ var LinkedList = (function() {
 		removeWithNode: function(node) {
 			if (node == null) throw 'Null node';
 
+			if (this._size > 2) {
+				var prevNode = node.prev;
+				var nextNode = node.next;
+				if (prevNode != null) {
+					prevNode.next = node.next;
+				}
+
+				if (nextNode != null) {
+					nextNode.prev = node.prev;
+				}
+			} else if (this._size == 2) {
+				if (node == this._head) {
+					this._head = this._tail;
+					this._tail.prev = null;
+				} else if (node == this._tail) {
+					this._tail = this._head;
+					this._head.next = null;
+				}
+			} else {
+				this._head = this._tail = null;
+			}
+
 			--this._size;
-
-			var prevNode = node.prev;
-			var nextNode = node.next;
-			if (prevNode != null) {
-				prevNode.next = node.next;
-			}
-
-			if (nextNode != null) {
-				nextNode.prev = node.prev;
-			}
 
 			node.next = node.prev = null;
 		},

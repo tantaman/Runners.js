@@ -56,7 +56,7 @@ function(Runners, CommonTests) {
 				}, 30);
 			});
 
-			it('Puts pending tasks in a queue when all workers are busy', function(done) {
+			it('Puts pending tasks in a queue when all workers are busy (long run due to lots of delay timers in the test code)', function(done) {
 				var pool = Runners.newFixedRunnerPool(2);
 
 				pool.ready(function() {
@@ -191,7 +191,7 @@ function(Runners, CommonTests) {
 		});
 
 		describe('terminate', function() {
-			it('Terminates all workers, running or not', function(done) {
+			it('Terminates all workers, running or not  (long run due to delay timers in test code since the is no way to be certain when the worker has actually terminated)', function(done) {
 				// No real good way to test this?
 				var pool = Runners.newFixedRunnerPool(1);
 				var progCnt = 0;

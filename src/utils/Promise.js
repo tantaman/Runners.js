@@ -169,6 +169,7 @@ var Promise = (function() {
 				} catch (e) {
 					log.error('Error invoking a promise done callback');
 					log.error(e.stack);
+					log.error(e);
 				}
 			}, this);
 		},
