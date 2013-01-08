@@ -1,0 +1,108 @@
+<!doctype HTML>
+<html>
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+<head>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Runners.js - usage</h1>
+        </div>
+
+        <h2>The Familiar Way</h2>
+        <div class="row">
+            <div class="span4">
+            <p>If you've used regular WebWorkers before then this example will be the most familiar to you.</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+            <h3>The Worker Code</h3>
+            Create a Javascript file containing the functions to be run in a seperate thread (WebWorker).  Assign those functions as properties of a <code>self.runnables</code> object.
+            </div>
+            <div class="span8">
+            <h3>Example <small>- myRunner.js</small></h3>
+            <pre class="prettyprint linenums">
+self.runnables = {
+    anneal: function() {/*...*/},
+    calculatePi: function(numTerms) {
+        var num = 4;
+        var sign = 1;
+        var result = 0;
+        for (var denom = 1; denom < numTerms * 2; denom+=2) {
+            result = result + sign * (num/denom);
+            sign *= -1;
+        }
+
+        return result;
+    }
+};
+            </pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                <h3>The Client Code</h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">Include <code>Runners.js</code> on your page</div>
+            <div class="span8">
+                <pre class="prettyprint linenums">&lt;script src="path/to/Runners.js"&gt;&lt;/script&gt;</pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                Configure <code>Runners.js</code> so it knows where to find its webworker scripts.  If you put <code>Runners.js</code> and <code>runnerWebWorker.js</code> in your scripts directory then just point <code>path</code> to <code>'scripts'</code>.
+            </div>
+            <div class="span8">
+                <pre class="prettyprint linenums">
+&lt;script&gt;
+Runners.config({
+    path: 'scripts'
+});
+&lt;/script&gt;
+                </pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                Now create your runner and point it to the script with the worker code that we created earlier.
+            </div>
+            <div class="span8">
+                <pre class="prettyprint linenums">var runner = Runners.newRunner('myRunner.js');</pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                Cool!  Finally, wait for your runner to be ready and then call that worker code!!
+            </div>
+            <div class="span8">
+                <pre class="prettyprint linenums">
+runner.ready(function() {
+    // Do 50000000 iterations of the Pi series
+    var promise = runner.fns.calculatePi(50000000);
+    promise.then(function(pi) {
+        alert("Our approximation of pi: " + pi);
+    });
+});</pre>
+            </div>
+        </div>
+
+        <h2>Submitting New Functions</h2>
+        todocument
+        <h2>Pooling Runners</h2>
+        todocument
+        <h2>Monitoring Progress</h2>
+        todocument
+        <h2>Interrupting Tasks</h2>
+        todocument
+        <h2>Canceling Tasks</h2>
+        todocument
+        <h2>Terminating Runners</h2>
+        todocument
+        <h2>Graceful Shutdown</h2>
+        todocument
+    </div>
+</body>
+</html>
