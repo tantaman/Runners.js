@@ -11,8 +11,12 @@ self.runnables = {
   
   simulate: function(world) {
     // code...
-  }
+  },
+  
+  ... // any other function you'd like to expose
 };
+
+// non-exposed worker code
 ```
 
 And your client code looks like:
@@ -40,7 +44,7 @@ runner.ready(function() {
 });
 ```
 
-A WebWorker is created behind the scenes and calls to `heavyMath` and `simulate` are dispatched to and run in that worker.
+A WebWorker is created behind the scenes and calls to `heavyMath` and `simulate` (or other runnables) are dispatched to and run in that worker.
 
 
 What about those times where you have a lot of work and several workers? You'd like to give work to WebWorkers as soon as they become available, right?
