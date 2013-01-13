@@ -64,6 +64,17 @@ function(Runners) {
 				expect(Object.keys(state).length).to.equal(2);
 				expect('failed' in state).to.equal(false);
 			});
+
+			it('Calls you back immediately if the promise is already resolved/rejected',
+			function() {
+				promise._setState('resolved');
+				var called = false;
+				promise.then(function() {
+					called = true;
+				});
+
+				expect(called).to.equal(true);
+			});
 		});
 
 		describe('done', function() {
@@ -115,21 +126,81 @@ function(Runners) {
 
 	
 		describe('fail', function() {
-			it('Allows observing for failure', function() {
+			var promise;
+			var pubPromise;
+			beforeEach(function() {
+				promise = new Runners.PrivatePromise();
+				pubPromise = Runners.createPublicInterface(promise);
+			});
 
+			it('Allows observing for failure', function() {
+				var failed = false;
+				pubPromise.fail(function() {
+					failed = true;
+				});
+
+				promise._setState('rejected');
+
+				expect(failed).to.equal(true);
 			});
 
 			it('Provides the result / exception / cause of the failure case', function() {
+				var failed = false;
+				pubPromise.fail(function(reason) {
+					failed = true;
+					expect(reason).to.equal('zomg');
+				});
 
+				promise._setState('rejected', 'zomg');
+
+				expect(failed).to.equal(true);
 			});
 		});
 
 		describe('always', function() {
+			it('Allows registration of a callback that is called in any case (failure or success)',
+			function () {
+				var promise = new Runners.PrivatePromise();
+				var pubPromise = Runners.createPublicInterface(promise);
 
+				var called = false;
+				pubPromise.always(function(result) {
+					called = true;
+					expect(result).to.equal(1);
+				});
+
+				promise._setState('resolved', 1);
+
+				expect(called).to.equal(true);
+
+				promise = new Runners.PrivatePromise();
+				pubPromise = Runners.createPublicInterface(promise);
+				called = false;
+				pubPromise.always(function(result) {
+					called = true;
+					expect(result).to.equal('zomg');
+				});
+
+				promise._setState('rejected', 'zomg');
+
+				expect(called).to.equal(true);
+			})
 		});
 
 		describe('progress', function() {
+			it('Allows registration of progress callbacks', function() {
+				var promise = new Runners.PrivatePromise();
+				var pubPromise = Runners.createPublicInterface(promise);
 
+				var progCnt = 0;
+				pubPromise.progress(function(d) {
+					expect(d).to.equal(progCnt);
+					++progCnt;
+				});
+
+				while (progCnt < 10)
+					promise._progressMade(progCnt);
+			});
 		});
 
 		describe('pipe', function() {
@@ -151,10 +222,6 @@ function(Runners) {
 		});
 
 		describe('state', function() {
-
-		});
-
-		describe('setState', function() {
 
 		});
 	});

@@ -149,9 +149,9 @@ var Promise = (function() {
 
 	Promise.prototype = {
 		then: function(doneBacks, failBacks, progressBacks) {
-			this._doneCbs = combine(this._doneCbs, doneBacks);
-			this._failCbs = combine(this._failCbs, failBacks);
-			this._progressCbs = combine(this._progressCbs, progressBacks);
+			this.done(doneBacks);
+			this.fail(failBacks);
+			this.progress(progressBacks);
 
 			return this;
 		},
@@ -363,6 +363,9 @@ var LinkedList = (function() {
 			this._tail = this._tail.prev;
 			if (this._tail != null)
 				this._tail.next = null;
+			else
+				this._head = null;
+			
 			return node;
 		},
 
@@ -373,6 +376,9 @@ var LinkedList = (function() {
 
 			if (this._head != null)
 				this._head.prev = null;
+			else
+				this._tail = null;
+
 			return node;
 		},
 

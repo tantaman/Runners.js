@@ -1,8 +1,2 @@
 -caching of tasks inside worker (reduce serialization)
--load worker from task from ID in page instead of function in script
--just create a new worker . . .  that returns promises from postMessage calls??
--support for tasks that go a-sync within the worker
-
-
--change 'newFixedWorkerPool' to 'newFixedRunnerPool'
--Make PWorker pools.
+-postMessage that returns promise?

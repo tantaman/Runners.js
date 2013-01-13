@@ -1,5 +1,3 @@
-'use strict';
-
 self.onmessage = function(e) {
 	if (e.data === 'internalComs') {
 		self._internal = {

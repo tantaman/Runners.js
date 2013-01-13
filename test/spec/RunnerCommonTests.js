@@ -132,7 +132,9 @@ define(function() {
 		},
 
 		runnables_promise: function() {
-			
+			it('Allows interruption of tasks / workers', function() {
+
+			});
 		},
 
 		submits_promise: function(runner) {
@@ -157,20 +159,72 @@ define(function() {
 				promise.interrupt();
 			});
 
-			it('Allows observation of failures', function() {
+			it('Allows observation of failures', function(done) {
+				var promise = runner.submit(function() {
+					throw 'Shit shit guys';
+				});
 
+				promise.fail(function(result) {
+					expect(result).to.equal('Shit shit guys');
+					done();
+				});
 			});
 
-			it('Allows observation of success', function() {
+			it('Allows observation of success', function(done) {
+				var promise = runner.submit(function() {
+					return 'good';
+				});
 
+				promise.done(function(result) {
+					expect(result).to.equal('good');
+					done();
+				});
 			});
 
-			it('Allows piping of results', function() {
+			it('Allows piping of results', function(done) {
+				var cnt = 0;
+				var promise = runner.submit(function() {
+					return 2;
+				});
 
+				var pipe = function(r) {
+					return r*10;
+				};
+
+				var cb = function(r) {
+					++cnt;
+					expect(r).to.equal(20);
+					if (cnt == 2)
+						done();
+				};
+
+				promise.pipe(pipe);
+
+				promise.done(cb);
+
+				promise = runner.submit(function() {
+					throw 2;
+				});
+
+				promise.pipe(null, pipe);
+
+				promise.fail(cb);
 			});
 
-			it('Allows listening for progress reports', function() {
+			it('Allows listening for progress reports', function(done) {
+				var promise = runner.submit(function() {
+					ic.progress(1);
+					ic.progress(2);
+					ic.progress(3);
+				});
 
+				var progCnt = 0;
+				promise.progress(function(r) {
+					progCnt++;
+					expect(progCnt).to.equal(r);
+				});
+
+				promise.done(done);
 			});
 		}
 	};

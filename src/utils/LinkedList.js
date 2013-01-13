@@ -38,6 +38,9 @@ var LinkedList = (function() {
 			this._tail = this._tail.prev;
 			if (this._tail != null)
 				this._tail.next = null;
+			else
+				this._head = null;
+			
 			return node;
 		},
 
@@ -48,6 +51,9 @@ var LinkedList = (function() {
 
 			if (this._head != null)
 				this._head.prev = null;
+			else
+				this._tail = null;
+
 			return node;
 		},
 

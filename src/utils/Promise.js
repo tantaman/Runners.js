@@ -14,9 +14,9 @@ var Promise = (function() {
 
 	Promise.prototype = {
 		then: function(doneBacks, failBacks, progressBacks) {
-			this._doneCbs = combine(this._doneCbs, doneBacks);
-			this._failCbs = combine(this._failCbs, failBacks);
-			this._progressCbs = combine(this._progressCbs, progressBacks);
+			this.done(doneBacks);
+			this.fail(failBacks);
+			this.progress(progressBacks);
 
 			return this;
 		},
