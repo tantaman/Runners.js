@@ -1,6 +1,12 @@
 # Runners.js #
 A sensible WebWorker interface
 
+*Usage information can be found in this readme as well as [here](http://tantaman.github.com/Runners.js/examples/usage.html).*
+
+*A running example that uses a few of Runners.js's introductory features can be found [here](http://localhost:8080/Runners.js/examples/pi/).*
+
+- - -
+
 With `Runners.js` your WebWorker scripts look something like:
 
 ```javascript
