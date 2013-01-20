@@ -32,8 +32,10 @@
 			}
 
 			if (useRunner) {
+				// Running with a Runner
 				runner.runnables
 					.calculatePi(iterations, reportAt).progress(progressCallback);
+
 			} else {
 				// Running the function in the UI thread
 				uiprog.progress = progressCallback;
