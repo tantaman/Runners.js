@@ -15,7 +15,7 @@ self.runnables = {
     // code...
   },
   
-  simulate: function(world) {
+  simulate: function(step) {
     // code...
   },
   
@@ -35,7 +35,7 @@ runner.ready(function() {
   runner.fns.heavyMath(t1,p1,v);
 
   // Runners return promises so you know when your task finishes or fails.
-  var promise = runner.fns.simulate(model);
+  var promise = runner.fns.simulate(step);
   
   promise.then(function(result) {    
     // update data for renderer
