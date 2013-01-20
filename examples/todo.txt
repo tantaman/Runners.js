@@ -1,0 +1,4 @@
+http://nerget.com/rayjs-mt/rayjs.html
+http://ejohn.org/blog/web-workers/
+
+Blocking queue to pass data btwn worker and UI?

@@ -1,9 +1,11 @@
 <!doctype HTML>
 <html>
     <link rel="stylesheet" type="text/css" href="css/main.css">
+    <link rel="stylesheet" type="text/css" href="css/prettify.css">
+    <script type="text/javascript" src="scripts/prettify.js"></script>
 <head>
 </head>
-<body>
+<body onload="prettyPrint()">
     <div class="container">
         <div class="page-header">
             <h1>Runners.js - usage</h1>
@@ -13,6 +15,8 @@
         <div class="row">
             <div class="span4">
             <p>If you've used regular WebWorkers before then this example will be the most familiar to you.</p>
+            The complete working source for what follows can be found
+            <a href="pi/index.html">here</a>.
             </div>
         </div>
         <div class="row">
@@ -21,8 +25,8 @@
             Create a Javascript file containing the functions to be run in a seperate thread (WebWorker).  Assign those functions as properties of a <code>self.runnables</code> object.
             </div>
             <div class="span8">
-            <h3>Example <small>- myRunner.js</small></h3>
-            <pre class="prettyprint linenums">
+            <h3><small>myrunner.js</small></h3>
+            <pre class="prettyprint">
 self.runnables = {
     anneal: function() {/*...*/},
     calculatePi: function(numTerms) {
@@ -44,11 +48,14 @@ self.runnables = {
             <div class="span4">
                 <h3>The Client Code</h3>
             </div>
+            <div class="span8">
+                <h3><small>index.html</small></h3>
+            </div>
         </div>
         <div class="row">
             <div class="span4">Include <code>Runners.js</code> on your page</div>
             <div class="span8">
-                <pre class="prettyprint linenums">&lt;script src="path/to/Runners.js"&gt;&lt;/script&gt;</pre>
+                <pre class="prettyprint">&lt;script src="path/to/Runners.js"&gt;&lt;/script&gt;</pre>
             </div>
         </div>
         <div class="row">
@@ -56,7 +63,7 @@ self.runnables = {
                 Configure <code>Runners.js</code> so it knows where to find its webworker scripts.  If you put <code>Runners.js</code> and <code>runnerWebWorker.js</code> in your scripts directory then just point <code>path</code> to <code>'scripts'</code>.
             </div>
             <div class="span8">
-                <pre class="prettyprint linenums">
+                <pre class="prettyprint">
 &lt;script&gt;
 Runners.config({
     path: 'scripts'
@@ -70,7 +77,7 @@ Runners.config({
                 Now create your runner and point it to the script with the worker code that we created earlier.
             </div>
             <div class="span8">
-                <pre class="prettyprint linenums">var runner = Runners.newRunner('myRunner.js');</pre>
+                <pre class="prettyprint">var runner = Runners.newRunner('myrunner.js');</pre>
             </div>
         </div>
         <div class="row">
@@ -78,10 +85,10 @@ Runners.config({
                 Cool!  Finally, wait for your runner to be ready and then call that worker code!!
             </div>
             <div class="span8">
-                <pre class="prettyprint linenums">
+                <pre class="prettyprint">
 runner.ready(function() {
     // Do 50000000 iterations of the Pi series
-    var promise = runner.fns.calculatePi(50000000);
+    var promise = runner.runnables.calculatePi(50000000);
     promise.then(function(pi) {
         alert("Our approximation of pi: " + pi);
     });
@@ -89,8 +96,68 @@ runner.ready(function() {
             </div>
         </div>
 
-        <h2>Submitting New Functions</h2>
-        todocument
+        <h2>Receiving Progress Updates</h2>
+        <div class="row">
+            <div class="span4">
+                <h3>The Worker Code</h3>
+                Inside of a runner you can gather any progress (intermediate results) that you may have made and post them to the main thread.
+                <br/><br/>
+                Every <code>runnable</code> has access to a variable called <code>workerContext</code>.  From this variable you can get the context of the current invocation and use that to post progress updates.
+            </div>
+            <div class="span8">
+                <h3><small>myrunner.js</small></h3>
+                <pre class="prettyprint">
+self.runnables = {
+    calculatePi: function(numTerms, reportAt) {
+        // Get the invocation context.  
+        // This should be done as the first call in your method.
+        var invocationContext = workerContext.invocation(); 
+
+        var num = 4;
+        var sign = 1;
+        var result = 0;
+        var i = 0;
+        for (var denom = 1; denom < numTerms * 2; denom+=2) {
+            result = result + sign * (num/denom);
+            sign *= -1;
+            ++i;
+            if (i % reportAt == 0)
+                // Send our progress to the main thread
+                invocationContext.progress(result);
+        }
+
+        return result;
+    }
+};
+                </pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                <h3>The Client Code</h3>
+            </div>
+            <div class="span8">
+                <h3><small>index.html</small></h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                In the main thread you can use the returned promise to receive the progress updates.
+            </div>
+            <div class="span8">
+                <pre class="prettyprint">
+var reportAt = 1000000;
+runner.runnables.calculatePi(50000000, reportAt).progress(function(value) {
+    console.log("Completed another " + reportAt + " iterations.");
+    console.log("Current value of Pi: " + value);
+});
+                </pre>
+            </div>
+        </div>
+
+        <h2>Submitting Entire Functions</h2>
+        <div class="row">
+        </div>
         <h2>Pooling Runners</h2>
         todocument
         <h2>Monitoring Progress</h2>

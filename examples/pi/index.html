@@ -1,0 +1,113 @@
+<html>
+<head>
+	<script src="../../dist/Runners.min.js"></script>
+
+	<!-- the following include is just so we can run myRunner on the UI thread.
+	This would not be in a normal application and is included here simply for demonstration purposes.
+	-->
+	<script>
+	var uiprog = {progress: function(){}};
+	var workerContext = {invocation: function() {return uiprog}};</script>
+	<script src="myrunner.js"></script>
+	<!-- end include -->
+
+	<script>
+		Runners.config({
+			path: '../../dist'
+		});
+
+		var runner = Runners.newRunner('../examples/pi/myrunner.js');
+
+		var recalculate = function() {
+			var reportAt = reportAtIn.value | 0;
+			var iterations = iterationsIn.value | 0;
+			var useRunner = !useUiThreadIn.checked;
+			output.value = '';
+			var iter = 0;
+
+			function progressCallback(value) {
+					++iter;
+	    			output.value += "\n" + (iter * reportAt) + ": " + value;
+	    			output.scrollTop = output.scrollHeight;
+			}
+
+			if (useRunner) {
+				runner.runnables
+					.calculatePi(iterations, reportAt).progress(progressCallback);
+			} else {
+				// Running the function in the UI thread
+				uiprog.progress = progressCallback;
+				window.runnables
+					.calculatePi(iterations, reportAt);
+			}
+		};
+	</script>
+	<style>
+	#uistatus {
+		width: 50px;
+		height: 50px;
+		background: #000;
+		display: inline-block;
+	}
+	</style>
+</head>
+<body onload="init()">
+	<textarea id="output" rows="20" cols="40"></textarea>
+	<div>
+		<input type="checkbox" id="useuithread"></input> Run on the UI thread
+	</div>
+	<div>
+		<label>Iterations: </label>
+		<input type="text" id="iterations" value="50000000"></input>
+	</div>
+	<div>
+		<label>Report at: </label>
+		<input type="text" id="reportAt" value="1000000"></input>
+	</div>
+	<div>
+		<button id="submit">Calculate!</button>
+	</div>
+	<div>
+		<br/>
+		UI Thread status:
+		<div id="uistatus"></div>
+		<div>
+		You'll notice that while running the calculation in a Runner the UI continues to update.  
+		<div>When running the code on the UI thread the UI hangs util the computation has completed.</div>
+		</div>
+	</div>
+
+	<script>
+	function init() {
+		window.$ = function(id) {
+			return document.getElementById(id);
+		};
+
+		window.reportAtIn = $('reportAt');
+		window.output = $('output');
+		window.iterationsIn = $('iterations');
+		window.useUiThreadIn = $('useuithread');
+
+		runner.ready(function() {
+			$('submit').onclick = function() {
+				recalculate();
+			};
+		});
+
+		var status = $('uistatus');
+		var i = 0;
+		var bgs = [
+		'#000',
+		'#222',
+		'#444',
+		'#666',
+		'#888'
+		];
+		setInterval(function() {
+			status.style.background = bgs[i % bgs.length];
+			++i;
+		}, 1000 / 30);
+	}
+	</script>
+</body>
+</html>
