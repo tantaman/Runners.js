@@ -1,6 +1,12 @@
 # Runners.js #
 A sensible WebWorker interface
 
+*Usage information can be found in this readme as well as [here](http://tantaman.github.com/Runners.js/examples/usage.html).*
+
+*A running example that uses a few of Runners.js's introductory features can be found [here](http://tantaman.github.com/Runners.js/examples/pi/).*
+
+- - -
+
 With `Runners.js` your WebWorker scripts look something like:
 
 ```javascript
@@ -9,7 +15,7 @@ self.runnables = {
     // code...
   },
   
-  simulate: function(world) {
+  simulate: function(step) {
     // code...
   },
   
@@ -29,7 +35,7 @@ runner.ready(function() {
   runner.fns.heavyMath(t1,p1,v);
 
   // Runners return promises so you know when your task finishes or fails.
-  var promise = runner.fns.simulate(model);
+  var promise = runner.fns.simulate(step);
   
   promise.then(function(result) {    
     // update data for renderer

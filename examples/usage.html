@@ -96,7 +96,7 @@ runner.ready(function() {
             </div>
         </div>
 
-        <h2>Receiving Progress Updates</h2>
+        <h2>Monitoring Progress</h2>
         <div class="row">
             <div class="span4">
                 <h3>The Worker Code</h3>
@@ -142,7 +142,7 @@ self.runnables = {
         </div>
         <div class="row">
             <div class="span4">
-                In the main thread you can use the returned promise to receive the progress updates.
+                In the main thread you can use the returned promise to receive the progress updates.  <a href="http://tantaman.github.com/Runners.js/examples/pi/">Complete source</a> for this example.
             </div>
             <div class="span8">
                 <pre class="prettyprint">
@@ -157,11 +157,182 @@ runner.runnables.calculatePi(50000000, reportAt).progress(function(value) {
 
         <h2>Submitting Entire Functions</h2>
         <div class="row">
+            <div class="span4">
+            </div>
+            <div class="span8">
+               <!--  <h3><small>index.html</small></h3> -->
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                <p>With <code>Runners.js</code> you don't even have to make a special WebWorker script.  You can submit entire function bodies to your runner and they'll be loaded into the backing WebWorker.</p>
+            </div>
+            <div class="span8">
+                <pre class="prettyprint">
+runner.submit([arg1, arg2, ...],
+function(arg1, arg2, ...) {
+        // code...
+        return result;
+}).then(function(result) {
+    // do something...
+});
+                </pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                You can play around with function submission here.
+            </div>
+            <div class="span8">
+                <i>Note: Function bodies that are submitted to a runner can not close over variables.  The submitted functions are currently not cached so they will currently undergo serialization each time they are called.</i>
+            </div>
         </div>
         <h2>Pooling Runners</h2>
-        todocument
-        <h2>Monitoring Progress</h2>
-        todocument
+        <div class="row">
+            <div class="span4">
+                <h3>the worker code</h3>
+                <p>One of the most powerful feature of <code>Runners.js</code> is its ability to let you pool multiple Runners / WebWorkers.  <code>Runners.js</code> will queue tasks and submit them to Runners as they become available.</p>  <p>The best part is that your worker code doesn't have to change at all in order to be used in a pool.</p>
+            </div>
+            <div class="span8">
+                <h3><small>myrunner.js</small></h3>
+                <pre class="prettyprint">
+// Calculates particle position.  Source: <span class="nocode"><a href="http://asterank.com/3d/">http://asterank.com/3d/</a></span>
+var PIXELS_PER_AU = ...;
+var Ephemeris = ...;
+self.runnables = {
+    getPosAtTime: function(eph, jed) {
+        var e = eph.e;
+        var a = eph.a;
+        var i = (eph.i - Ephemeris.earth.i) * pi / 180;
+        var o = (eph.om - Ephemeris.earth.om) * pi / 180;
+        var p = eph.w * pi / 180;
+        var ma = eph.ma;
+        var M;
+        ma = ma * pi / 180;
+        var n;
+        if (eph.n) n = eph.n * pi / 180;
+        else {
+            n = 2 * pi / eph.P;
+        }
+        var epoch = eph.epoch;
+        var d = epoch - jed;
+        M = ma + n * -d;
+        var sin = Math.sin,
+            cos = Math.cos;
+        var E0 = M;
+        var lastdiff;
+        do {
+            var E1 = M + e * sin(E0);
+            lastdiff = Math.abs(E1 - E0);
+            E0 = E1;
+        } while (lastdiff > 0.0000001);
+        var E = E0;
+        var v = 2 * Math.atan(Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2));
+        var r = a * (1 - e * e) / (1 + e * cos(v)) * PIXELS_PER_AU;
+        var X = r * (cos(o) * cos(v + p - o) - sin(o) * sin(v + p - o) * cos(i))
+        var Y = r * (sin(o) * cos(v + p - o) + cos(o) * sin(v + p - o) * cos(i))
+        var Z = r * (sin(v + p - o) * sin(i))
+        var ret = [X, Y, Z];
+        return ret;
+    }
+};
+                </pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                <h3>The Client Code</h3>
+                Just call <code>Runners.newFixedRunnerPool(script, size);</code> and use it like a normal runner.
+            </div>
+            <div class="span8">
+                <h3><small>index.html</small></h3>
+                <pre class="prettyprint">
+var pool = Runners.newFixedRunnerPool('myrunner.js', 4);
+pool.ready(function() {
+    // Submit all particles to be updated
+    // Extra tasks are queued until one of the four pooled
+    // runners becomes available.
+   particles.forEach(function(particle) {
+    pool.runnables
+        .getPosAtTime(particle.eph, particle.jed)
+        .then(particle.updated);
+   });
+});
+                </pre>
+            </div>
+        </div>
+        <h2>Going A-Sync in a Runner</h2>
+        <div class="row">
+            <div class="span4">
+                <h3>The Worker Code</h3>
+                <p>The above code may make more sense if we could have a Runner that ran an iteration of the simulation every N milliseconds and then posted its results.</p>
+                <p>The problem with that is that if some code in our WebWorker script were to call <code>setTimeout</code>, or <code>setInterval</code>, our promise would immediately be fulfilled and no longer receive progress callbacks.</p>
+                <p>
+                    Luckily you can tell the worker context that your code is going to go a-sync and that there is still work to be done.
+                </p>
+            </div>
+            <div class="span8">
+                <h3><small>myrunner.js</small></h3>
+                <pre class="prettyprint">
+var intervalHandle;
+var stopSimulation = false;
+
+// instead of using self.runnables we register our function the long hand way
+// workerContext.register(function_name, function, returnPromise, isAsync);
+workerContext.register('startSimulation', function() {
+    var invocationContext = workerContext.invocation();
+    ...
+    function step() {
+        // do some work
+        ...
+
+        // report the new positions of the particles in the world
+        invocationContext.progress(world);
+
+        // check to see if we should stop simulating
+        if (stopSimulation) {
+            clearInterval(intervalHandle);
+            // Let the context know that we are finally done
+            invocationContext.done();
+        }
+    }
+
+    // go a-sync
+    intervalHandle = setInterval(step, 1000 / 30);
+}, true, true);
+
+self.runnables = {
+    // stop simulation doesn't go a-sync so we can register it like normal.
+    stopSimulation: function() {
+        stopSimulation = true;
+    }  
+};
+                </pre>
+            </div>
+        </div>
+        <div class="row">
+            <div class="span4">
+                <h3>The Client Code</h3>
+                <p>Nothing really changes on the client side of things.</p>
+                <p>Note: In this example, you could pool together several runners and divide the simulation evenly across them.</p>
+            </div>
+            <div class="span8">
+                <h3><small>index.html</small></h3>
+                <pre class="prettyprint">
+Runners.config({
+    path: 'scripts'
+});
+
+var runner = Runners.newRunner('myrunner.js');
+
+runner.ready(function() {
+    runner.runnables.startSimulation().progress(function(world) {
+        render(world);
+    });
+});
+                </pre>
+            </div>
+        </div>
         <h2>Interrupting Tasks</h2>
         todocument
         <h2>Canceling Tasks</h2>
@@ -175,3 +346,45 @@ runner.runnables.calculatePi(50000000, reportAt).progress(function(value) {
     </div>
 </body>
 </html>
+
+
+<!-- <pre class="prettyprint">
+// Calculates particle position.  Source: <span class="nocode"><a href="http://asterank.com/3d/">http://asterank.com/3d/</a></span>
+runner.submit(
+    [eph, jed, Ephemeris, PIXELS_PER_AU],
+    function getPosAtTime(eph, jed, Ephemeris, PIXELS_PER_AU) {
+        var e = eph.e;
+        var a = eph.a;
+        var i = (eph.i - Ephemeris.earth.i) * pi / 180;
+        var o = (eph.om - Ephemeris.earth.om) * pi / 180;
+        var p = eph.w * pi / 180;
+        var ma = eph.ma;
+        var M;
+        ma = ma * pi / 180;
+        var n;
+        if (eph.n) n = eph.n * pi / 180;
+        else {
+            n = 2 * pi / eph.P;
+        }
+        var epoch = eph.epoch;
+        var d = epoch - jed;
+        M = ma + n * -d;
+        var sin = Math.sin,
+            cos = Math.cos;
+        var E0 = M;
+        var lastdiff;
+        do {
+            var E1 = M + e * sin(E0);
+            lastdiff = Math.abs(E1 - E0);
+            E0 = E1;
+        } while (lastdiff > 0.0000001);
+        var E = E0;
+        var v = 2 * Math.atan(Math.sqrt((1 + e) / (1 - e)) * Math.tan(E / 2));
+        var r = a * (1 - e * e) / (1 + e * cos(v)) * PIXELS_PER_AU;
+        var X = r * (cos(o) * cos(v + p - o) - sin(o) * sin(v + p - o) * cos(i))
+        var Y = r * (sin(o) * cos(v + p - o) + cos(o) * sin(v + p - o) * cos(i))
+        var Z = r * (sin(v + p - o) * sin(i))
+        var ret = [X, Y, Z];
+        return ret;
+});
+                </pre> -->
