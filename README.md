@@ -32,10 +32,10 @@ var runner = Runners.newRunner('path/to/myRunner.js');
 runner.ready(function() {
   
   // Run some CPU bound processing in a new thread
-  runner.fns.heavyMath(t1,p1,v);
+  runner.runnables.heavyMath(t1,p1,v);
 
   // Runners return promises so you know when your task finishes or fails.
-  var promise = runner.fns.simulate(step);
+  var promise = runner.runnables.simulate(step);
   
   promise.then(function(result) {    
     // update data for renderer
@@ -65,7 +65,7 @@ runnerPool.ready(function() {
     // in whatever Runner/WebWorker becomes available first.
     for (var i = 0; i < 5; ++i) {
       // runnerPools also return promises
-      runnerPool.fns.heavyMath().then(function() {
+      runnerPool.runnables.heavyMath().then(function() {
         // any success code
       });
     }
