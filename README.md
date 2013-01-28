@@ -1,7 +1,7 @@
 # Runners.js #
 A sensible WebWorker interface
 
-Usage information can be found in this readme as well as in the **[docs](http://tantaman.github.com/Runners.js/examples/usage.html).**
+[Usage](http://tantaman.github.com/Runners.js/examples/usage.html) information can be found in this readme as well as in the **[docs](http://tantaman.github.com/Runners.js/examples/usage.html).**
 
 *A full example that uses a few of Runners.js's introductory features can be found* **[here](http://tantaman.github.com/Runners.js/examples/pi/).**
 
